@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools==84.2.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kestrel-control-plane"
+version = "2.2.0"
+description = "Kestrel - a control panel for self-hosted KVM infrastructure (PlexScale Software)"
+requires-python = ">=3.12,<3.13"
+# Every version is pinned and was checked with pip-audit (no known vulnerabilities) at release.
+dependencies = [
+  "fastapi==0.162.0",
+  "starlette==1.10.0",
+  "uvicorn[standard]==0.54.0",
+  "SQLAlchemy==2.0.57",
+  "alembic==1.20.1",
+  "Jinja2==3.1.6",
+  "python-multipart==0.0.33",
+  "pydantic-settings==2.16.2",
+  "argon2-cffi==25.1.0",
+  "cryptography==50.0.2",
+  "asyncssh==2.24.1",
+  "libvirt-python==11.2.0",
+  "passlib==1.7.4",
+  "defusedxml==0.7.1",
+]
+
+[project.optional-dependencies]
+test = ["pytest==9.2.0", "httpx2==2.16.0"]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.alembic]
+script_location = "migrations"
+prepend_sys_path = "."
+
+[tool.setuptools.package-data]
+app = ["templates/*.html", "templates/administrator/*.html", "static/*", "static/os/*", "static/vendor/**/*", "node/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

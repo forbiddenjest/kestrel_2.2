@@ -1,0 +1,18 @@
+# Replace vps.mydomain.xyz with the panel hostname (must equal KESTREL_TRUSTED_HOST).
+vps.mydomain.xyz {
+    encode zstd gzip
+    request_body {
+        max_size 2MB
+    }
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+    # Node enrollment and the panel itself; the console websocket is proxied too.
+    reverse_proxy 127.0.0.1:8000 {
+        header_up X-Forwarded-For {remote_host}
+    }
+}

@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% from 'components.html' import status_badge, empty_state, csrf_field, icon, page_header, alerts, notice_banner, notice_icon %}
+{% block title %}Others{% endblock %}
+{% block content %}
+{{ page_header('Others', 'Site-wide notices and the support link.') }}
+{{ alerts(notice=notice, error=error) }}
+<div class="detail-layout-form">
+  <section class="box form-box">
+    <h2 class="box-title">{{ icon('megaphone', 15) }} New notice</h2>
+    <p class="muted small">Active notices appear as a banner at the top of every page for every account.</p>
+    <form action="/administrator/notices" method="post" class="form-stack">
+      {{ csrf_field(csrf_token) }}
+      <fieldset class="choice choice-row">
+        <legend>Type</legend>
+        {% for key, meta in notice_kinds.items() %}<label class="choice-item notice-choice notice-{{ key }}"><input type="radio" name="kind" value="{{ key }}" {% if loop.first %}checked{% endif %}><span class="notice-icon">{{ notice_icon(key, 15) }}</span><span><strong>{{ meta[0] }}</strong></span></label>{% endfor %}
+      </fieldset>
+      <label>Title<input name="title" maxlength="120" placeholder="Scheduled maintenance on nyc-01" required></label>
+      <label>Message<textarea name="message" rows="3" maxlength="1000" placeholder="Optional details"></textarea></label>
+      <div class="form-actions"><button class="btn btn-primary" type="submit">{{ icon('plus', 14) }}Publish notice</button></div>
+    </form>
+  </section>
+  <section class="box">
+    <div class="box-head"><h2 class="box-title">{{ icon('support', 15) }} Support link</h2>{% if support_link %}<a class="btn btn-ghost btn-sm" href="{{ support_link }}" target="_blank" rel="noopener noreferrer">Open</a>{% endif %}</div>
+    <p class="muted small">Shown to every account as the Support button in the sidebar. Use a Discord invite link, or leave empty to hide the button.</p>
+    <form method="post" action="/administrator/settings" class="form-stack">
+      {{ csrf_field(csrf_token) }}
+      <label>Discord invite URL<input type="url" name="support_url" value="{{ support_link }}" placeholder="https://discord.gg/yourcode" maxlength="300"></label>
+      <div class="form-actions"><button class="btn btn-primary" type="submit">Save</button></div>
+    </form>
+  </section>
+</div>
+<section class="box box-flush">
+  <div class="box-head"><h2 class="box-title">Notices <span class="count">{{ notices|length }}</span></h2></div>
+  {% if notices %}
+  <div class="list notice-list">
+  {% for n in notices %}
+    <div class="notice-row">
+      {{ notice_banner(n) }}
+      <div class="row-actions">
+        {{ status_badge('active' if n.active else 'inactive') }}
+        <form action="/administrator/notices/{{ n.id }}/toggle" method="post">{{ csrf_field(csrf_token) }}<button class="btn btn-ghost btn-sm" type="submit">{{ 'Hide' if n.active else 'Show' }}</button></form>
+        <form action="/administrator/notices/{{ n.id }}/delete" method="post" data-confirm="Delete this notice?">{{ csrf_field(csrf_token) }}<button class="btn btn-ghost btn-sm btn-text-danger" type="submit">Delete</button></form>
+      </div>
+    </div>
+  {% endfor %}
+  </div>
+  {% else %}{{ empty_state('No notices', 'Publish one above to show it to everyone.', 'megaphone') }}{% endif %}
+</section>
+{% endblock %}

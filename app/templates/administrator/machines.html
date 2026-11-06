@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% from 'components.html' import status_badge, empty_state, csrf_field, icon, page_header, alerts, os_logo %}
+{% block title %}Machines{% endblock %}
+{% block content %}
+{{ page_header('Machines', 'Every virtual machine across all clusters.', '/administrator/machines/new', 'Create machine') }}
+{{ alerts(flash=flash, secret=secret, notice=notice, error=error) }}
+<section class="box box-flush">
+  <div class="box-head"><h2 class="box-title">All machines <span class="count">{{ machines|length }}</span></h2></div>
+  {% if machines %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Machine</th><th>Owner</th><th>State</th><th>Public IPv4</th><th>Resources</th><th>Bandwidth</th><th class="right">Actions</th></tr></thead>
+    <tbody>
+    {% for machine in machines %}
+    <tr>
+      <td><a class="cell-title" href="/machines/{{ machine.id }}"><span class="cell-logo">{{ os_logo(machine.image, 30) }}</span><span><strong>{{ machine.id }}</strong><small>{{ machine.vm_name }} · {{ machine.cluster.name }}</small></span></a></td>
+      <td class="cell-owner" title="{{ machine.owner.email }}">{{ machine.owner.username or machine.owner.email }}</td>
+      <td>{{ status_badge(machine.state) }}</td>
+      <td class="mono">{{ machine.cluster_ip.public_ipv4 if machine.cluster_ip else '—' }}</td>
+      <td class="nowrap">{{ machine.vcpu }} vCPU · {{ (machine.memory_mb/1024)|round(1) }} GB<small class="cell-sub">{{ machine.disk_gb }} GB disk</small></td>
+      <td>{{ machine.traffic_used_bytes()|bytes }}<small class="cell-sub">of {{ (machine.bandwidth_limit_gb ~ ' GB') if machine.bandwidth_limit_gb else 'unlimited' }}</small></td>
+      <td class="right"><div class="row-actions">
+        <a class="btn btn-ghost btn-sm" href="/administrator/machines/{{ machine.id }}/edit">{{ icon('edit', 13) }}Edit</a>
+        <form action="/administrator/machines/{{ machine.id }}/suspend" method="post" data-confirm="{{ 'Unsuspend' if machine.state == 'suspended' else 'Suspend and power off' }} {{ machine.id }}?">{{ csrf_field(csrf_token) }}<button class="btn btn-ghost btn-sm" type="submit">{{ 'Unsuspend' if machine.state == 'suspended' else 'Suspend' }}</button></form>
+      </div></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  {{ empty_state('No machines yet', 'Needs an active cluster, a free public IP and a cloud image.', 'machines', '/administrator/machines/new', 'Create machine') }}
+  {% endif %}
+</section>
+{% endblock %}

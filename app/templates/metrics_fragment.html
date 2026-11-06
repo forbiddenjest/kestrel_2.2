@@ -1,0 +1,18 @@
+{% from 'components.html' import metric, meter %}
+{% if samples %}{% set latest = samples[-1] %}
+<div class="metrics">
+  <div class="metric"><div class="metric-head"><span class="metric-label">CPU</span><span class="metric-value">{{ (latest.cpu_percent|round(1)) if latest.cpu_percent is not none else '—' }}<span>%</span></span></div>{{ meter(latest.cpu_percent or 0) }}<small class="muted">{{ machine.vcpu }} cores</small></div>
+  {% set mem_pct = (latest.memory_used_mb / machine.memory_mb * 100) if machine.memory_mb else 0 %}
+  <div class="metric"><div class="metric-head"><span class="metric-label">Memory</span><span class="metric-value">{{ mem_pct|round(1) }}<span>%</span></span></div>{{ meter(mem_pct) }}<small class="muted">{{ latest.memory_used_mb }} MB of {{ machine.memory_mb }} MB used</small></div>
+  {{ metric('Disk read', (latest.disk_read_bytes / 1048576)|round(1), 'MB') }}
+  {{ metric('Network in / out', ((latest.network_rx_bytes / 1048576)|round(1)) ~ ' / ' ~ ((latest.network_tx_bytes / 1048576)|round(1)), 'MB') }}
+</div>
+<div class="chart" role="img" aria-label="CPU usage over recent samples">
+  <div class="chart-caption"><span>CPU usage</span><span>Recent samples</span></div>
+  <svg viewBox="0 0 720 140" preserveAspectRatio="none" aria-hidden="true"><path class="chart-area" d="M 0 140 {% for sample in samples %}{% set x = (loop.index0 * 720 / ((samples|length - 1) if samples|length > 1 else 1)) %}{% set y = (130 - ((sample.cpu_percent or 0) * 1.2)) %} L {{ x }} {{ y }}{% endfor %} L 720 140 Z"/><path class="chart-line" d="{% for sample in samples %}{% set x = (loop.index0 * 720 / ((samples|length - 1) if samples|length > 1 else 1)) %}{% set y = (130 - ((sample.cpu_percent or 0) * 1.2)) %}{{ 'M' if loop.first else 'L' }} {{ x }} {{ y }}{% endfor %}"/></svg>
+</div>
+<div class="muted small">Updated {{ latest.sampled_at.strftime('%H:%M:%S') }} UTC</div>
+{% else %}
+<div class="metrics">{{ metric('CPU','—','%') }}{{ metric('Memory','—','%') }}{{ metric('Disk read','—','MB') }}{{ metric('Network in / out','—','MB') }}</div>
+<div class="chart-empty">Usage will appear once this machine is running.</div>
+{% endif %}

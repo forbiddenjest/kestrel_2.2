@@ -1,0 +1,48 @@
+<!doctype html>
+{% from 'components.html' import icon, notice_banner %}
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token|default('') }}">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="htmx-config" content='{"includeIndicatorStyles":false,"allowEval":false,"allowScriptTags":false}'>
+  <title>{% block title %}Kestrel{% endblock %} · Kestrel</title>
+  <link rel="icon" href="/static/favicon.png" type="image/png">
+  <link rel="stylesheet" href="/static/app.css?v={{ app_version }}">
+  {% block head %}{% endblock %}
+  <script defer src="/static/vendor/htmx.min.js"></script>
+</head>
+<body>
+{% set is_admin = user and user.role == 'admin' %}
+{% set support = support_url() %}
+<div class="shell">
+  <aside class="sidebar" aria-label="Main navigation">
+    <a class="brand" href="/dashboard"><img src="/static/kestrelwordmark.png" alt="Kestrel" width="132" height="32"></a>
+    <nav class="nav">
+      <a class="nav-link {% if page == 'dashboard' %}active{% endif %}" href="/dashboard">{{ icon('dashboard', 16) }}<span>Dashboard</span></a>
+      <a class="nav-link {% if page == 'account' %}active{% endif %}" href="/account">{{ icon('account', 16) }}<span>Account</span></a>
+      {% if support %}<a class="nav-link" href="{{ support }}" target="_blank" rel="noopener noreferrer">{{ icon('support', 16) }}<span>Support</span></a>{% endif %}
+      {% if is_admin %}
+      <div class="nav-label">Administration</div>
+      {% for key, label, glyph in [('overview','Overview','overview'),('machines','Machines','machines'),('clusters','Clusters','clusters'),('network','Network','network'),('images','Images','images'),('accounts','Accounts','accounts'),('logs','Activity logs','logs'),('others','Others','others')] %}
+      <a class="nav-link {% if page == key %}active{% endif %}" href="/administrator/{{ key }}">{{ icon(glyph, 16) }}<span>{{ label }}</span></a>
+      {% endfor %}
+      {% endif %}
+    </nav>
+    <form class="nav-bottom" method="post" action="/auth/logout"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="nav-link" type="submit">{{ icon('signout', 16) }}<span>Sign out</span></button></form>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      {% set admin_pages = {'overview': 'Overview', 'machines': 'Machines', 'clusters': 'Clusters', 'network': 'Network', 'images': 'Images', 'accounts': 'Accounts', 'logs': 'Activity logs', 'others': 'Others'} %}
+      <nav class="crumbs" aria-label="Location">{% if page in admin_pages %}<span class="crumb-root">{{ icon('shield', 14) }}Administration</span>{{ icon('chevron', 12) }}<span class="crumb-current">{{ admin_pages[page] }}</span>{% else %}<span class="crumb-root">{{ icon('dashboard', 14) }}Workspace</span>{{ icon('chevron', 12) }}<span class="crumb-current">{{ 'Account' if page == 'account' else 'Dashboard' }}</span>{% endif %}</nav>
+      <a class="user-chip" href="/account" title="Signed in as {{ user.email }}" aria-label="Account: {{ user.username or user.email }}"><span class="user-meta"><strong>{{ user.username or user.email }}{% if is_admin %}<span class="role-pill">{{ icon('shield', 11) }}Admin</span>{% endif %}</strong><small>{% if user.username %}{{ user.email }}{% else %}{{ 'Administrator' if is_admin else 'User' }}{% endif %}</small></span><span class="user-avatar"><img class="user-icon" src="/static/user_icon.png" alt="" width="34" height="34"></span></a>
+    </header>
+    {% set notices = active_notices() %}{% if notices %}<div class="notices">{% for n in notices %}{{ notice_banner(n) }}{% endfor %}</div>{% endif %}
+    <div class="content">{% block content %}{% endblock %}</div>
+  </main>
+</div>
+<footer class="credit" role="contentinfo">Kestrel - PlexScale Software</footer>
+<script defer src="/static/app.js?v={{ app_version }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% from 'components.html' import csrf_field, form_header, alerts %}
+{% block title %}Add image{% endblock %}
+{% block content %}
+{{ form_header('Add image', 'Downloaded over HTTPS by each active node and rejected unless the SHA-256 matches.', '/administrator/images', 'Images') }}
+{{ alerts(error=error) }}
+<section class="box form-box">
+  <form action="/administrator/images" method="post" class="form-grid">
+    {{ csrf_field(csrf_token) }}
+    <label>Name<input name="name" value="{{ values.name or '' }}" placeholder="Ubuntu 24.04 LTS" maxlength="100" required></label>
+    <label>Type<select name="kind"><option value="cloud" {% if values.kind != 'iso' %}selected{% endif %}>Cloud image</option><option value="iso" {% if values.kind == 'iso' %}selected{% endif %}>ISO disc</option></select></label>
+    <label>Operating system<select name="os_family"><option value="auto">Detect from name</option>{% for key, label in os_families.items() %}<option value="{{ key }}" {% if values.os_family == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    <div class="os-picker">{% for key in ['ubuntu','debian','almalinux'] %}<img src="/static/os/{{ key }}.png" alt="{{ os_families[key] }}" width="32" height="32">{% endfor %}<small class="muted">Logos for Ubuntu, Debian and AlmaLinux are built in.</small></div>
+    <label class="span-2">HTTPS URL<input type="url" name="url" value="{{ values.url or '' }}" placeholder="https://cloud-images.ubuntu.com/..." required></label>
+    <label class="span-2">SHA-256 checksum<input name="checksum" value="{{ values.checksum or '' }}" pattern="[a-fA-F0-9]{64}" minlength="64" maxlength="64" placeholder="64 hex characters" spellcheck="false" required></label>
+    <div class="form-actions span-2"><a class="btn btn-ghost" href="/administrator/images">Cancel</a><button class="btn btn-primary" type="submit">Add image</button></div>
+  </form>
+</section>
+{% endblock %}

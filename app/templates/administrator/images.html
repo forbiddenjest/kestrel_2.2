@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% from 'components.html' import status_badge, empty_state, icon, page_header, alerts, os_logo %}
+{% block title %}Images{% endblock %}
+{% block content %}
+{{ page_header('Images', 'Cloud images and install discs available to machines.', '/administrator/images/new', 'Add image') }}
+{{ alerts(notice=notice, error=error) }}
+<section class="box box-flush">
+  <div class="box-head"><h2 class="box-title">All images <span class="count">{{ images|length }}</span></h2></div>
+  {% if images %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Image</th><th>OS</th><th>Type</th><th>SHA-256</th><th>State</th><th>Added</th><th class="right"></th></tr></thead>
+    <tbody>
+    {% for image in images %}
+    <tr><td><div class="cell-title"><span class="cell-logo">{{ os_logo(image, 30) }}</span><strong>{{ image.name }}</strong></div></td><td>{{ os_families[image.os_family] }}</td><td><span class="tag">{{ 'Cloud' if image.kind == 'cloud' else 'ISO' }}</span></td><td class="mono truncate" title="{{ image.checksum }}">{{ image.checksum[:16] }}…</td><td>{{ status_badge('active' if image.active else 'inactive') }}</td><td class="muted">{{ image.created_at.strftime('%b %d, %Y') }}</td><td class="right"><a class="btn btn-ghost btn-sm" href="/administrator/images/{{ image.id }}/edit">{{ icon('edit', 13) }}Edit</a></td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  {{ empty_state('No images yet', 'Add a cloud image so machines can be created.', 'images', '/administrator/images/new', 'Add image') }}
+  {% endif %}
+</section>
+{% endblock %}

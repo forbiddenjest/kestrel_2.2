@@ -1,0 +1,88 @@
+{% set _icons = {
+ 'overview': '<path d="M21 12A9 9 0 0 0 12 3v9z"/><path d="M20.2 15.9A9 9 0 1 1 8.1 3.9"/>',
+ 'machines': '<rect x="3" y="3.5" width="18" height="7" rx="2"/><rect x="3" y="13.5" width="18" height="7" rx="2"/><path d="M7 7h.01M7 17h.01M11 7h6M11 17h6"/>',
+ 'accounts': '<path d="M16 20v-1.5a4 4 0 0 0-4-4H6.5a4 4 0 0 0-4 4V20"/><circle cx="9.2" cy="7.5" r="3.5"/><path d="M21.5 20v-1.5a4 4 0 0 0-3-3.85M15.5 4.1a3.5 3.5 0 0 1 0 6.8"/>',
+ 'clusters': '<rect x="8.5" y="2.5" width="7" height="5.5" rx="1.6"/><rect x="2.5" y="16" width="7" height="5.5" rx="1.6"/><rect x="14.5" y="16" width="7" height="5.5" rx="1.6"/><path d="M12 8v4M6 16v-1.5A2.5 2.5 0 0 1 8.5 12h7a2.5 2.5 0 0 1 2.5 2.5V16"/>',
+ 'network': '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+ 'images': '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/><path d="M12 3a9 9 0 0 1 9 9"/>',
+ 'logs': '<path d="M14 2.5H7A2.5 2.5 0 0 0 4.5 5v14A2.5 2.5 0 0 0 7 21.5h10a2.5 2.5 0 0 0 2.5-2.5V8z"/><path d="M14 2.5V8h5.5M8.5 13h7M8.5 17h4.5"/>',
+ 'account': '<circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/>',
+ 'signout': '<path d="M9 21H5.5A2.5 2.5 0 0 1 3 18.5v-13A2.5 2.5 0 0 1 5.5 3H9M16 17l5-5-5-5M21 12H9"/>',
+ 'start': '<path d="M7 4.9v14.2a1.2 1.2 0 0 0 1.8 1l11.3-7.1a1.2 1.2 0 0 0 0-2L8.8 3.9A1.2 1.2 0 0 0 7 4.9z"/>',
+ 'stop': '<rect x="5" y="5" width="14" height="14" rx="2.5"/>',
+ 'restart': '<path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/>',
+ 'power': '<path d="M12 2.5v9"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/>',
+ 'cpu': '<rect x="5" y="5" width="14" height="14" rx="2.5"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/>',
+ 'memory': '<rect x="2.5" y="5.5" width="19" height="10.5" rx="2"/><path d="M6.5 19.5V16M10 19.5V16M14 19.5V16M17.5 19.5V16M8 11V9.5M12 11V9.5M16 11V9.5"/>',
+ 'disk': '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5M3 12a9 3 0 0 0 18 0"/>',
+ 'alert': '<path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3z"/><path d="M12 9.5v4M12 17h.01"/>',
+ 'octagon': '<path d="M8 2.5h8l5.5 5.5v8L16 21.5H8L2.5 16V8z"/><path d="M12 8v4.5M12 16h.01"/>',
+ 'error': '<circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/>',
+ 'check': '<circle cx="12" cy="12" r="9"/><path d="m8.5 12.2 2.4 2.4 4.6-4.9"/>',
+ 'resolved': '<path d="M3.9 8.6a4 4 0 0 1 4.7-4.7 4 4 0 0 1 6.8 0 4 4 0 0 1 4.7 4.7 4 4 0 0 1 0 6.8 4 4 0 0 1-4.7 4.7 4 4 0 0 1-6.8 0 4 4 0 0 1-4.7-4.7 4 4 0 0 1 0-6.8z"/><path d="m9 12 2 2 4-4"/>',
+ 'arrow': '<path d="M5 12h14M13 6l6 6-6 6"/>',
+ 'plus': '<path d="M12 5v14M5 12h14"/>',
+ 'terminal': '<rect x="2.5" y="4" width="19" height="16" rx="2.5"/><path d="m7 9.5 2.5 2.5L7 14.5M12.5 14.5H17"/>',
+ 'shield': '<path d="M12 21.5s8-3.6 8-9.8V5.6a1 1 0 0 0-.7-.9l-6.6-2.3a2 2 0 0 0-1.4 0L4.7 4.7a1 1 0 0 0-.7.9v6.1c0 6.2 8 9.8 8 9.8z"/>',
+ 'key': '<circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.3-9.3M17 6l3 3M14 9l2 2"/>',
+ 'pause': '<rect x="6" y="4.5" width="4" height="15" rx="1.2"/><rect x="14" y="4.5" width="4" height="15" rx="1.2"/>',
+ 'trash': '<path d="M3.5 6h17M8.5 6V4.5A1.5 1.5 0 0 1 10 3h4a1.5 1.5 0 0 1 1.5 1.5V6M18.5 6l-.8 13.1A2 2 0 0 1 15.7 21H8.3a2 2 0 0 1-2-1.9L5.5 6M10 10.5v6M14 10.5v6"/>',
+ 'link': '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',
+ 'rebuild': '<path d="m15 12-8.4 8.4a2.1 2.1 0 0 1-3-3L12 9"/><path d="m18 15 4-4"/><path d="m21.5 11.5-1.9-1.9a2 2 0 0 1-.6-1.4V7l-2.3-2.3A6 6 0 0 0 12.5 3H9l.9.8A6.2 6.2 0 0 1 12 8.4V10l2 2h1.2a2 2 0 0 1 1.4.6l1.9 1.9"/>',
+ 'activity': '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+ 'dashboard': '<rect x="3" y="3" width="7.5" height="9" rx="2"/><rect x="13.5" y="3" width="7.5" height="5" rx="2"/><rect x="13.5" y="11" width="7.5" height="10" rx="2"/><rect x="3" y="15" width="7.5" height="6" rx="2"/>',
+ 'support': '<path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.1-5.7A8.5 8.5 0 1 1 21 11.5z"/><path d="M9.5 9.5a2.5 2.5 0 0 1 4.9.8c0 1.7-2.4 2.2-2.4 3.7M12 17h.01"/>',
+ 'location': '<path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/>',
+ 'copy': '<rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15h-.5A1.5 1.5 0 0 1 3 13.5v-9A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5V5"/>',
+ 'edit': '<path d="M12 20h8.5"/><path d="M16.4 3.6a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+ 'settings': '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+ 'chevron': '<path d="m9 6 6 6-6 6"/>',
+ 'back': '<path d="M19 12H5M11 18l-6-6 6-6"/>',
+ 'info': '<circle cx="12" cy="12" r="9"/><path d="M12 11.5v5M12 7.8h.01"/>',
+ 'update': '<path d="M3.5 12a8.5 8.5 0 0 1 14.7-5.8L20.5 8.5"/><path d="M20.5 3.5v5h-5"/><path d="M20.5 12a8.5 8.5 0 0 1-14.7 5.8L3.5 15.5"/><path d="M3.5 20.5v-5h5"/>',
+ 'maintenance': '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/>',
+ 'megaphone': '<path d="M3 11v2a1 1 0 0 0 1 1h2.5l6.4 4.3a1 1 0 0 0 1.6-.8V6.5a1 1 0 0 0-1.6-.8L6.5 10H4a1 1 0 0 0-1 1z"/><path d="M18 9a4 4 0 0 1 0 6M6.5 14l1.3 5.2a1 1 0 0 0 1 .8h1.1a1 1 0 0 0 1-1.2L10 15.6"/>',
+ 'others': '<rect x="3" y="3" width="7.5" height="7.5" rx="2.2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2.2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2.2"/><path d="M17.25 14v6.5M14 17.25h6.5"/>',
+ 'transfer': '<path d="M4 8h15l-4-4M20 16H5l4 4"/>',
+ 'gauge': '<path d="m12 14 4-4"/><path d="M3.5 18a9 9 0 1 1 17 0"/>'
+} %}
+{% set _notice_icons = {'info': 'info', 'update': 'update', 'maintenance': 'maintenance', 'warning': 'alert', 'alert': 'octagon', 'success': 'resolved'} %}
+{% macro icon(name, size=16) -%}<svg class="icon icon-{{ name }}" width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{{ _icons.get(name, _icons['overview'])|safe }}</svg>{%- endmacro %}
+{% macro notice_icon(kind, size=16) -%}{{ icon(_notice_icons.get(kind, 'info'), size) }}{%- endmacro %}
+{% macro status_badge(state) -%}<span class="status status-{{ state|lower|replace(' ', '-') }}"><span class="status-dot"></span>{{ state|replace('-', ' ')|title }}</span>{%- endmacro %}
+{% macro csrf_field(token) -%}<input type="hidden" name="csrf_token" value="{{ token }}">{%- endmacro %}
+{% macro metric(label, value, unit='') -%}<div class="metric"><div class="metric-label">{{ label }}</div><div class="metric-value">{{ value }}<span>{{ unit }}</span></div></div>{%- endmacro %}
+{% macro empty_state(title, message, glyph='overview', href='', label='') -%}<div class="empty"><div class="empty-icon">{{ icon(glyph, 20) }}</div><h3>{{ title }}</h3><p>{{ message }}</p>{% if href %}<a class="btn btn-primary" href="{{ href }}">{{ icon('plus', 14) }}{{ label }}</a>{% endif %}</div>{%- endmacro %}
+{% macro stat_card(label, value, sub, glyph) -%}<div class="box stat"><div class="stat-body"><span class="stat-label">{{ label }}</span><strong class="stat-value">{{ value }}</strong><span class="stat-sub">{{ sub }}</span></div><span class="stat-icon">{{ icon(glyph, 18) }}</span></div>{%- endmacro %}
+{% macro meter(pct) -%}{% set p = [[pct or 0, 0]|max, 100]|min %}<svg class="meter" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true"><rect class="meter-track" width="100" height="6"/><rect class="meter-fill{% if p >= 90 %} meter-hot{% elif p >= 70 %} meter-warm{% endif %}" width="{{ p|round(2) }}" height="6"/></svg>{%- endmacro %}
+{% macro bar(label, used, total, unit, note) -%}{% set pct = ((used / total * 100) if total else 0) %}<div class="cap"><div class="cap-head"><span>{{ label }}</span><span class="muted">{{ used }} / {{ total }} {{ unit }}</span></div>{{ meter(pct) }}<small class="muted">{{ pct|round(1) }}% {{ note }}</small></div>{%- endmacro %}
+{% macro page_header(title, subtitle='', href='', label='', glyph='plus') -%}<div class="page-head"><div><h1>{{ title }}</h1>{% if subtitle %}<p>{{ subtitle }}</p>{% endif %}</div>{% if href %}<a class="btn btn-primary" href="{{ href }}">{{ icon(glyph, 14) }}{{ label }}</a>{% endif %}</div>{%- endmacro %}
+{% macro form_header(title, subtitle, back_href, back_label) -%}<a class="back-link" href="{{ back_href }}">{{ icon('back', 14) }}{{ back_label }}</a><div class="page-head"><div><h1>{{ title }}</h1><p>{{ subtitle }}</p></div></div>{%- endmacro %}
+{% macro alerts(flash='', secret='', notice='', error='') -%}
+{% if error %}<div class="alert alert-error" role="alert">{{ icon('error', 16) }}<div>{{ error }}</div></div>{% endif %}
+{% if notice %}<div class="alert alert-info" role="status">{{ icon('check', 16) }}<div>{{ notice }}</div></div>{% endif %}
+{% if flash %}<div class="alert alert-warning" role="status">{{ icon('key', 16) }}<div><div>{{ flash }}</div>{% if secret %}<div class="secret"><code id="one-time-secret">{{ secret }}</code><button class="btn btn-ghost btn-sm" type="button" data-copy="one-time-secret">{{ icon('copy', 13) }}Copy</button></div>{% endif %}</div></div>{% endif %}
+{%- endmacro %}
+{% macro table_head(columns) -%}<thead><tr>{% for column in columns %}<th scope="col">{{ column }}</th>{% endfor %}</tr></thead>{%- endmacro %}
+{% macro flag(location_id, cls='flag') -%}{% set url = flag_url(location_id) %}{% if url %}<img class="{{ cls }}" src="{{ url }}" alt="{{ location_id|upper }} flag" referrerpolicy="no-referrer" loading="lazy">{% endif %}{%- endmacro %}
+{% macro location_block(cluster) -%}{% if cluster and (cluster.location or cluster.location_id) %}<div class="location"><div><strong>{{ cluster.location_id|upper or '—' }}</strong><span>{{ cluster.location or '—' }}</span></div>{{ flag(cluster.location_id) }}</div>{% else %}<div class="location"><div><strong>Not set</strong><span>An administrator can set this on the cluster.</span></div></div>{% endif %}{%- endmacro %}
+{% macro os_logo(image, size=28) -%}{% set family = image.os_family if image else 'other' %}{% if family in os_logos %}<img class="os-logo" src="/static/os/{{ family }}.png" alt="{{ os_families[family] }}" width="{{ size }}" height="{{ size }}">{% else %}<span class="os-logo os-generic">{{ icon('images', (size * 0.6)|int) }}</span>{% endif %}{%- endmacro %}
+{% macro notice_banner(n) -%}{% set meta = notice_kinds.get(n.kind, notice_kinds['info']) %}<div class="notice notice-{{ n.kind }}" role="status"><span class="notice-icon">{{ notice_icon(n.kind, 16) }}</span><div><strong>{{ meta[0] }} · {{ n.title }}</strong>{% if n.message %}<p>{{ n.message }}</p>{% endif %}</div></div>{%- endmacro %}
+{% macro traffic_chart(series) -%}{% set peak = [series|map(attribute='rx')|max, series|map(attribute='tx')|max, 1]|max %}
+<div class="chart" role="img" aria-label="Daily transfer for the last {{ series|length }} days">
+  <div class="chart-caption"><span><i class="key key-in"></i>Inbound <i class="key key-out"></i>Outbound</span><span>Last {{ series|length }} days · peak {{ peak|bytes }}</span></div>
+  <svg viewBox="0 0 {{ series|length * 24 }} 140" preserveAspectRatio="none" aria-hidden="true">{% for d in series %}{% set x = loop.index0 * 24 %}<rect class="bar-in" x="{{ x + 3 }}" y="{{ 140 - (d.rx / peak * 130) }}" width="8" height="{{ d.rx / peak * 130 }}"><title>{{ d.day }} in {{ d.rx|bytes }}</title></rect><rect class="bar-out" x="{{ x + 12 }}" y="{{ 140 - (d.tx / peak * 130) }}" width="8" height="{{ d.tx / peak * 130 }}"><title>{{ d.day }} out {{ d.tx|bytes }}</title></rect>{% endfor %}</svg>
+  <div class="chart-axis"><span>{{ series[0].day[5:] }}</span><span>{{ series[-1].day[5:] }}</span></div>
+</div>{%- endmacro %}
+{% macro traffic_summary(machine) -%}{% set pct = machine.traffic_percent() %}
+<div class="traffic">
+  <div class="ring"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="ring-track" cx="60" cy="60" r="50"/><circle class="ring-fill{% if (pct or 0) >= 90 %} ring-hot{% endif %}" cx="60" cy="60" r="50" stroke-dasharray="{{ ((pct or 0) * 3.1416)|round(2) }} 314.16" transform="rotate(-90 60 60)"/></svg><span>{{ (pct|round(1)) if pct is not none else '∞' }}<small>{% if pct is not none %}% used{% else %}unmetered{% endif %}</small></span></div>
+  <dl class="traffic-list">
+    <div><dt><i class="key key-in"></i>Inbound</dt><dd>{{ machine.traffic_rx_bytes|bytes }}</dd></div>
+    <div><dt><i class="key key-out"></i>Outbound</dt><dd>{{ machine.traffic_tx_bytes|bytes }}</dd></div>
+    <div><dt><i class="key"></i>Total this month</dt><dd>{{ machine.traffic_used_bytes()|bytes }}</dd></div>
+    <div><dt><i class="key"></i>Allowance</dt><dd>{{ (machine.bandwidth_limit_gb ~ ' GB') if machine.bandwidth_limit_gb else 'Unlimited' }}</dd></div>
+    <div><dt><i class="key"></i>Inbound speed</dt><dd>{{ machine.speed_in_mbps|speed }}</dd></div>
+    <div><dt><i class="key"></i>Outbound speed</dt><dd>{{ machine.speed_out_mbps|speed }}</dd></div>
+  </dl>
+</div>{%- endmacro %}

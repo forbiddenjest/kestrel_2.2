@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% from 'components.html' import csrf_field, form_header, alerts %}
+{% block title %}Create machine{% endblock %}
+{% block content %}
+{{ form_header('Create machine', 'Assigns a free public IP, copies the image and boots the machine.', '/administrator/machines', 'Machines') }}
+{{ alerts(error=error) }}
+{% set active_clusters = clusters|selectattr('state','equalto','active')|list %}
+{% set cloud_images = images|selectattr('active')|selectattr('kind','equalto','cloud')|list %}
+<section class="box form-box">
+  {% if not active_clusters or not cloud_images %}
+  <div class="alert alert-warning"><div>You need at least one active cluster and one active cloud image before creating a machine.</div></div>
+  {% endif %}
+  <form action="/administrator/machines" method="post" class="form-grid">
+    {{ csrf_field(csrf_token) }}
+    <label>Owner<select name="owner_id" required><option value="">Select an account</option>{% for item in users if item.active %}<option value="{{ item.id }}" {% if values.owner_id == item.id|string %}selected{% endif %}>{{ item.username or item.email }}{% if item.max_vms %} (limit {{ item.max_vms }} VMs){% endif %}</option>{% endfor %}</select></label>
+    <label>Cluster<select name="cluster_id" required><option value="">Select a cluster</option>{% for cluster in active_clusters %}<option value="{{ cluster.id }}" {% if values.cluster_id == cluster.id|string %}selected{% endif %}>{{ cluster.name }}{% if cluster.location %} · {{ cluster.location }}{% endif %} ({{ cluster.ips|selectattr('machine_id','none')|list|length }} free IPs)</option>{% endfor %}</select></label>
+    <label class="span-2">Image<select name="image_id" required><option value="">Select an image</option>{% for image in cloud_images %}<option value="{{ image.id }}" {% if values.image_id == image.id|string %}selected{% endif %}>{{ image.name }}</option>{% endfor %}</select></label>
+    <label>vCPU<input type="number" name="vcpu" value="{{ values.vcpu or 2 }}" min="1" max="64" required></label>
+    <label>Memory (MB)<input type="number" name="memory_mb" value="{{ values.memory_mb or 2048 }}" min="512" max="262144" step="512" required></label>
+    <label>Disk (GB)<input type="number" name="disk_gb" value="{{ values.disk_gb or 20 }}" min="5" max="4096" required></label>
+    <label>Bandwidth limit (GB / month)<input type="number" name="bandwidth_limit_gb" value="{{ values.bandwidth_limit_gb or 1000 }}" min="0" max="10000000"><small>0 = unlimited. The machine is suspended when it reaches the limit.</small></label>
+    <label>Inbound speed (Mbps)<input type="number" name="speed_in_mbps" list="speeds" value="{{ values.speed_in_mbps or 1000 }}" min="0" max="100000"><small>0 = unlimited. e.g. 480 or 1000 (1 Gbps).</small></label>
+    <label>Outbound speed (Mbps)<input type="number" name="speed_out_mbps" list="speeds" value="{{ values.speed_out_mbps or 480 }}" min="0" max="100000"><small>0 = unlimited.</small></label>
+    <datalist id="speeds"><option value="100"><option value="480"><option value="1000"><option value="2500"><option value="10000"></datalist>
+    <div class="form-actions span-2"><a class="btn btn-ghost" href="/administrator/machines">Cancel</a><button class="btn btn-primary" type="submit">Create machine</button></div>
+  </form>
+</section>
+{% endblock %}

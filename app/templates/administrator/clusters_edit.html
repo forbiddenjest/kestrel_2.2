@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% from 'components.html' import csrf_field, form_header, alerts, location_block, status_badge %}
+{% block title %}Edit {{ cluster.name }}{% endblock %}
+{% block content %}
+{{ form_header('Edit ' ~ cluster.name, 'Node ' ~ cluster.node_ipv4 ~ ' · uplink ' ~ cluster.uplink_interface ~ ' · guests ' ~ cluster.guest_subnet, '/administrator/clusters', 'Clusters') }}
+{{ alerts(error=error) }}
+<div class="detail-layout-form">
+  <form action="/administrator/clusters/{{ cluster.id }}/edit" method="post" class="stack">
+    {{ csrf_field(csrf_token) }}
+    <section class="box form-box">
+      <h2 class="box-title">General</h2>
+      <div class="form-grid">
+        <label>Cluster name<input name="name" value="{{ cluster.name }}" maxlength="80" required></label>
+        <label>SSH port<input type="number" name="ssh_port" value="{{ cluster.ssh_port }}" min="1" max="65535" required></label>
+        <label>Disk capacity (GB)<input type="number" name="disk_capacity_gb" value="{{ cluster.disk_capacity_gb }}" min="0"><small>0 = not enforced. Memory capacity is read from the node on Verify.</small></label>
+      </div>
+    </section>
+    <section class="box form-box">
+      <h2 class="box-title">Location</h2>
+      <div class="form-grid">
+{% set LV = cluster %}
+      <label>Location ID<input name="location_id" value="{{ LV.location_id or '' }}" placeholder="IN" maxlength="2" pattern="[A-Za-z]{2}"><small>Two-letter country code. The flag is shown automatically.</small></label>
+      <label>Location<input name="location" value="{{ LV.location or '' }}" placeholder="Mumbai, Pune" maxlength="80"><small>Full location shown to users.</small></label>
+      </div>
+    </section>
+    <section class="box form-box">
+      <h2 class="box-title">Replace credentials</h2>
+      <p class="muted small">Leave empty to keep the current ones. Replacing either sets the cluster to pending until it is verified again.</p>
+      <div class="form-grid">
+        <label class="span-2">Node SSH host key<input name="node_host_key" placeholder="{{ cluster.node_ipv4 }} ssh-ed25519 AAAA..."></label>
+        <label class="span-2">Panel SSH private key<textarea name="ssh_private_key" rows="3" autocomplete="off" spellcheck="false"></textarea></label>
+      </div>
+    </section>
+    <div class="form-actions"><a class="btn btn-ghost" href="/administrator/clusters">Cancel</a><button class="btn btn-primary" type="submit">Save changes</button></div>
+  </form>
+  <div class="stack">
+    <section class="box"><h2 class="box-title">Shown to users</h2>{{ location_block(cluster) }}</section>
+    <section class="box"><h2 class="box-title">Status</h2>
+      <dl class="fields"><div><dt>State</dt><dd>{{ status_badge(cluster.state) }}</dd></div><div><dt>Machines</dt><dd>{{ cluster.machines|length }}</dd></div><div><dt>Memory</dt><dd>{{ cluster.memory_capacity_mb }} MB</dd></div><div><dt>Threads</dt><dd>{{ cluster.cpu_capacity }}</dd></div></dl>
+      <p class="muted small">Uplink and subnets are fixed at enrollment because the node's network is built from them.</p>
+    </section>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% from 'components.html' import empty_state, icon, page_header, alerts, csrf_field %}
+{% block title %}Network{% endblock %}
+{% block content %}
+{{ page_header('Network', 'Public IP to machine mappings on every cluster.', '/administrator/network/new', 'Add IPs') }}
+{{ alerts(notice=notice, error=error) }}
+<section class="box box-flush">
+  <div class="box-head"><h2 class="box-title">IP mappings <span class="count">{{ ips|length }}</span></h2><span class="muted small">{{ ips|selectattr('machine_id','none')|list|length }} free</span></div>
+  {% if ips %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Public</th><th>Node private</th><th>Guest</th><th>Cluster</th><th>Assigned to</th><th class="right"></th></tr></thead>
+    <tbody>
+    {% for ip in ips %}
+    <tr><td class="mono">{{ ip.public_ipv4 }}</td><td class="mono">{{ ip.private_ipv4 }}</td><td class="mono">{{ ip.guest_ipv4 }}</td><td>{{ ip.cluster.name }}</td>
+      <td>{% if ip.machine_id %}<a class="link" href="/machines/{{ ip.machine_id }}">{{ ip.machine_id }}</a>{% else %}<span class="tag">Free</span>{% endif %}</td>
+      <td class="right">{% if not ip.machine_id %}<form action="/administrator/network/ips/{{ ip.id }}/delete" method="post" data-confirm="Remove {{ ip.public_ipv4 }} from {{ ip.cluster.name }}?">{{ csrf_field(csrf_token) }}<button class="btn btn-ghost btn-sm btn-text-danger" type="submit">Remove</button></form>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  {{ empty_state('No IPs yet', 'IP pairs are added when you create a cluster, or here.', 'network', '/administrator/network/new', 'Add IPs') }}
+  {% endif %}
+</section>
+{% endblock %}

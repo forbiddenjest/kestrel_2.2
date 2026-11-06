@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% from 'components.html' import csrf_field, form_header, alerts %}
+{% block title %}Add cluster{% endblock %}
+{% block content %}
+{{ form_header('Add cluster', 'Connects a KVM node over SSH with a pinned host key, then gives you a one-time setup command.', '/administrator/clusters', 'Clusters') }}
+{{ alerts(error=error) }}
+<form action="/administrator/clusters" method="post" class="stack">
+  {{ csrf_field(csrf_token) }}
+  <section class="box form-box">
+    <h2 class="box-title">Node</h2>
+    <div class="form-grid">
+      <label>Cluster name<input name="name" value="{{ values.name or '' }}" placeholder="nyc-01" maxlength="80" required></label>
+      <label>Node primary IPv4<input name="node_ipv4" value="{{ values.node_ipv4 or '' }}" placeholder="203.0.113.10" required></label>
+      <label>SSH port<input type="number" name="ssh_port" value="{{ values.ssh_port or 22 }}" min="1" max="65535" required></label>
+      <label>Uplink interface<input name="uplink_interface" value="{{ values.uplink_interface or '' }}" placeholder="eth0" maxlength="32" required></label>
+      <label class="span-2">Guest subnet<input name="guest_subnet" value="{{ values.guest_subnet or '192.168.122.0/24' }}" maxlength="18" required><small>Private range (/16 to /28) used only on the node's guest bridge. Must not overlap the node's network.</small></label>
+    </div>
+  </section>
+  <section class="box form-box">
+    <h2 class="box-title">Location</h2>
+    <p class="muted small">Shown to users on each machine's Overview.</p>
+    <div class="form-grid">
+{% set LV = values %}
+      <label>Location ID<input name="location_id" value="{{ LV.location_id or '' }}" placeholder="IN" maxlength="2" pattern="[A-Za-z]{2}"><small>Two-letter country code. The flag is shown automatically.</small></label>
+      <label>Location<input name="location" value="{{ LV.location or '' }}" placeholder="Mumbai, Pune" maxlength="80"><small>Full location shown to users.</small></label>
+    </div>
+  </section>
+  <section class="box form-box">
+    <h2 class="box-title">Access</h2>
+    <div class="form-grid">
+      <label class="span-2">Node SSH host key<input name="node_host_key" value="{{ values.node_host_key or '' }}" placeholder="203.0.113.10 ssh-ed25519 AAAA..." required><small>A known_hosts line. Connections are refused if the node presents a different key.</small></label>
+      <label class="span-2">Panel SSH private key<textarea name="ssh_private_key" rows="4" autocomplete="off" spellcheck="false" required></textarea><small>Unencrypted OpenSSH key. Stored encrypted; never shown again.</small></label>
+    </div>
+  </section>
+  <section class="box form-box">
+    <h2 class="box-title">IP pool</h2>
+    <div class="form-grid">
+      <label class="span-2">Private,public IP pairs<textarea name="pairs" rows="4" placeholder="203.0.113.11,198.51.100.11" spellcheck="false" required>{{ values.pairs or '' }}</textarea><small>One pair per line. Private IPs must be in the node's /24. The node's own primary IP is not allowed.</small></label>
+    </div>
+  </section>
+  <div class="form-actions"><a class="btn btn-ghost" href="/administrator/clusters">Cancel</a><button class="btn btn-primary" type="submit">Add cluster</button></div>
+</form>
+{% endblock %}

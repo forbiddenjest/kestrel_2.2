@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Sign in · Kestrel</title>
+  <link rel="icon" href="/static/favicon.png">
+  <link rel="stylesheet" href="/static/app.css?v={{ app_version }}">
+</head>
+<body class="auth-body">
+<main class="auth-stage">
+  <div class="auth-card">
+    <img class="auth-logo" src="/static/kestrelwordmark.png" alt="Kestrel" width="150" height="36">
+    <h1>Sign in</h1>
+    <p class="muted">Use the account your administrator gave you.</p>
+    {% if error %}<div class="alert alert-error" role="alert"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/></svg><div>{{ error }}</div></div>{% endif %}
+    <form method="post" action="/auth" class="form-stack">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>Email or username<input type="text" name="email" value="{{ email }}" autocomplete="username" maxlength="255" required autofocus></label>
+      <label>Password<input type="password" name="password" autocomplete="current-password" maxlength="256" required></label>
+      <button class="btn btn-primary btn-block" type="submit">Sign in</button>
+    </form>
+  </div>
+</main>
+<footer class="credit" role="contentinfo">Kestrel - PlexScale Software</footer>
+</body>
+</html>

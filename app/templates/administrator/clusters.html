@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% from 'components.html' import status_badge, empty_state, csrf_field, icon, page_header, alerts, flag %}
+{% block title %}Clusters{% endblock %}
+{% block content %}
+{{ page_header('Clusters', 'Hypervisor nodes, their location and IP pools.', '/administrator/clusters/new', 'Add cluster') }}
+{{ alerts(flash=flash, secret=secret, notice=notice, error=error) }}
+<section class="box box-flush">
+  <div class="box-head"><h2 class="box-title">All clusters <span class="count">{{ clusters|length }}</span></h2></div>
+  {% if clusters %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Cluster</th><th>Location</th><th>Node</th><th>Machines</th><th>IP pool</th><th>State</th><th class="right">Actions</th></tr></thead>
+    <tbody>
+    {% for cluster in clusters %}
+    <tr>
+      <td><div class="cell-title"><span class="cell-icon">{{ icon('clusters', 15) }}</span><strong>{{ cluster.name }}</strong></div></td>
+      <td><div class="cell-location">{{ flag(cluster.location_id, 'flag flag-sm') }}<span>{{ cluster.location or '—' }}{% if cluster.location_id %}<small class="cell-sub">{{ cluster.location_id }}</small>{% endif %}</span></div></td>
+      <td class="mono">{{ cluster.node_ipv4 }}:{{ cluster.ssh_port }}</td>
+      <td>{{ cluster.machines|length }}</td>
+      <td class="nowrap">{{ cluster.ips|selectattr('machine_id','none')|list|length }} free / {{ cluster.ips|length }}</td>
+      <td>{{ status_badge(cluster.state) }}</td>
+      <td class="right"><div class="row-actions">
+        <a class="btn btn-ghost btn-sm" href="/administrator/clusters/{{ cluster.id }}/edit">{{ icon('edit', 13) }}Edit</a>
+        {% if cluster.state != 'active' %}
+        <form action="/administrator/clusters/{{ cluster.id }}/verify" method="post">{{ csrf_field(csrf_token) }}<button class="btn btn-ghost btn-sm" type="submit">Verify</button></form>
+        <form action="/administrator/clusters/{{ cluster.id }}/token" method="post">{{ csrf_field(csrf_token) }}<button class="btn btn-ghost btn-sm" type="submit">Setup command</button></form>
+        {% else %}
+        <form action="/administrator/clusters/{{ cluster.id }}/drain" method="post" data-confirm="Drain {{ cluster.name }}? No new machines will be placed on it.">{{ csrf_field(csrf_token) }}<button class="btn btn-ghost btn-sm" type="submit">Drain</button></form>
+        {% endif %}
+        {% if cluster.state == 'draining' %}<form action="/administrator/clusters/{{ cluster.id }}/activate" method="post">{{ csrf_field(csrf_token) }}<button class="btn btn-ghost btn-sm" type="submit">Reactivate</button></form>{% endif %}
+      </div></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  {{ empty_state('No clusters yet', 'Add a KVM node to start creating machines.', 'clusters', '/administrator/clusters/new', 'Add cluster') }}
+  {% endif %}
+</section>
+{% endblock %}

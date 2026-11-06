@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% from 'components.html' import csrf_field, form_header, alerts %}
+{% block title %}Edit {{ target.email }}{% endblock %}
+{% block content %}
+{{ form_header('Edit account', target.email, '/administrator/accounts', 'Accounts') }}
+{{ alerts(error=error, notice=notice) }}
+<div class="detail-layout-form">
+<section class="box form-box">
+  <form action="/administrator/accounts/{{ target.id }}/edit" method="post" class="form-grid" autocomplete="off">
+    {{ csrf_field(csrf_token) }}
+    <label>Email address<input name="email" type="email" value="{{ target.email }}" maxlength="255" required></label>
+    <label>Username<input name="username" value="{{ target.username or '' }}" maxlength="32" pattern="[a-z0-9][a-z0-9_.\-]{2,31}" placeholder="optional"></label>
+    <label>Account type<select name="role"{% if target.id == user.id %} disabled{% endif %}><option value="user" {% if target.role != 'admin' %}selected{% endif %}>User</option><option value="admin" {% if target.role == 'admin' %}selected{% endif %}>Administrator</option></select>{% if target.id == user.id %}<input type="hidden" name="role" value="admin"><small>You cannot change your own account type.</small>{% endif %}</label>
+    <label class="check"><input type="checkbox" name="active" {% if target.active %}checked{% endif %}{% if target.id == user.id %} disabled{% endif %}><span>Account active</span>{% if target.id == user.id %}<input type="hidden" name="active" value="on">{% endif %}</label>
+    <label>New password<input type="password" name="new_password" minlength="12" maxlength="256" autocomplete="new-password" placeholder="leave empty to keep"><small>At least 12 characters. Signs the account out everywhere.</small></label>
+    <label class="check"><input type="checkbox" name="force_change" checked><span>Require a password change at next sign-in</span></label>
+{% set L = target %}
+    <fieldset class="span-2 limits">
+      <legend>Limits <small class="muted">0 = unlimited</small></legend>
+      <div class="form-grid form-grid-5">
+        <label>Machines<input type="number" name="max_vms" value="{{ L.max_vms or 0 }}" min="0" max="10000"></label>
+        <label>vCPU<input type="number" name="max_vcpu" value="{{ L.max_vcpu or 0 }}" min="0" max="100000"></label>
+        <label>Memory (MB)<input type="number" name="max_memory_mb" value="{{ L.max_memory_mb or 0 }}" min="0" step="512"></label>
+        <label>Disk (GB)<input type="number" name="max_disk_gb" value="{{ L.max_disk_gb or 0 }}" min="0"></label>
+        <label>IPv4 addresses<input type="number" name="max_ips" value="{{ L.max_ips or 0 }}" min="0" max="100000"></label>
+      </div>
+    </fieldset>
+    <div class="form-actions span-2"><a class="btn btn-ghost" href="/administrator/accounts">Cancel</a><button class="btn btn-primary" type="submit">Save changes</button></div>
+  </form>
+</section>
+<section class="box">
+  <h2 class="box-title">Current usage</h2>
+  <dl class="fields">
+    <div><dt>Machines</dt><dd>{{ usage.vms }}{% if target.max_vms %} / {{ target.max_vms }}{% endif %}</dd></div>
+    <div><dt>vCPU</dt><dd>{{ usage.vcpu }}{% if target.max_vcpu %} / {{ target.max_vcpu }}{% endif %}</dd></div>
+    <div><dt>Memory</dt><dd>{{ usage.memory_mb }} MB{% if target.max_memory_mb %} / {{ target.max_memory_mb }} MB{% endif %}</dd></div>
+    <div><dt>Disk</dt><dd>{{ usage.disk_gb }} GB{% if target.max_disk_gb %} / {{ target.max_disk_gb }} GB{% endif %}</dd></div>
+    <div><dt>IPv4</dt><dd>{{ usage.ips }}{% if target.max_ips %} / {{ target.max_ips }}{% endif %}</dd></div>
+    <div><dt>Created</dt><dd>{{ target.created_at.strftime('%b %d, %Y') }}</dd></div>
+  </dl>
+  <p class="muted small">Limits are checked on every create, resize and owner change. Lowering a limit below current usage blocks new growth but does not remove machines.</p>
+</section>
+<section class="box">
+  <h2 class="box-title">Sign-in</h2>
+  <dl class="fields">
+    <div><dt>Failed attempts</dt><dd>{{ target.failed_attempts or 0 }}</dd></div>
+    <div><dt>Locked until</dt><dd>{{ target.locked_until.strftime('%Y-%m-%d %H:%M UTC') if target.locked_until else 'Not locked' }}</dd></div>
+    <div><dt>Password change required</dt><dd>{{ 'Yes' if target.force_password_change else 'No' }}</dd></div>
+  </dl>
+  {% if target.locked_until or target.failed_attempts %}
+  <form action="/administrator/accounts/{{ target.id }}/unlock" method="post" class="form-actions">{{ csrf_field(csrf_token) }}<button class="btn btn-ghost" type="submit">Clear lock</button></form>
+  {% endif %}
+</section>
+{% if target.id != user.id %}
+<section class="box box-danger">
+  <h2 class="box-title">Delete account</h2>
+  {% if usage.vms %}
+  <p class="muted small">This account owns {{ usage.vms }} machine{{ 's' if usage.vms != 1 }}. Move them to another owner or delete them first.</p>
+  {% else %}
+  <p class="muted small">Removes the account and signs it out. Activity log entries are kept.</p>
+  <form action="/administrator/accounts/{{ target.id }}/delete" method="post" class="inline-confirm" data-confirm="Delete {{ target.email }} permanently?">
+    {{ csrf_field(csrf_token) }}
+    <label>Type the email to confirm<input name="confirm_email" autocomplete="off" required></label>
+    <button class="btn btn-danger" type="submit">Delete account</button>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+</div>
+{% endblock %}

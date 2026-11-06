@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+{% from 'components.html' import status_badge, metric, csrf_field, icon, location_block, os_logo, traffic_summary, traffic_chart %}
+{% block title %}{{ machine.id }}{% endblock %}
+{% block head %}{% if tab == 'console' %}<link rel="stylesheet" href="/static/vendor/xterm/xterm.css"><script defer src="/static/vendor/xterm/xterm.js"></script><script defer src="/static/vendor/xterm/addon-fit.js"></script>{% endif %}{% endblock %}
+{% macro power(action, label, glyph, busy, style='btn-primary', confirm='') -%}
+<form method="post" action="/machines/{{ machine.id }}/actions" hx-post="/machines/{{ machine.id }}/actions" hx-target="#action-result"{% if confirm %} data-confirm="{{ confirm }}"{% endif %}>{{ csrf_field(csrf_token) }}<input type="hidden" name="action" value="{{ action }}"><button class="btn {{ style }}" type="submit"{% if busy %} disabled{% endif %}>{{ icon(glyph, 14) }}{{ label }}</button></form>
+{%- endmacro %}
+{% block content %}
+{% set busy = machine.state in ['provisioning', 'rebuilding', 'deleting', 'suspended', 'transferring', 'failed'] %}
+<a class="back-link" href="/dashboard">{{ icon('back', 14) }}Dashboard</a>
+<div class="detail-head">
+  <div>
+    <h1>{{ machine.id }}</h1>
+    <p class="muted">{{ machine.image.name if machine.image else 'No image' }} · created {{ machine.created_at.strftime('%b %d, %Y') }}{% if user.role == 'admin' %} · owner {{ machine.owner.email }}{% endif %}</p>
+  </div>
+  <div class="detail-actions">{% if user.role == 'admin' %}<a class="btn btn-ghost btn-sm" href="/administrator/machines/{{ machine.id }}/edit">{{ icon('edit', 13) }}Manage</a>{% endif %}<div class="state-block state-{{ machine.state }}">{{ machine.state|replace('-', ' ')|upper }}</div></div>
+</div>
+{% if machine.state == 'failed' %}<div class="alert alert-error" role="alert">{{ icon('alert', 16) }}<div>This machine could not be built. Rebuild it from the Settings tab, or contact support.</div></div>{% endif %}
+{% if machine.state == 'transferring' %}<div class="alert alert-warning" role="status">{{ icon('transfer', 16) }}<div>This machine is being moved to another node. It is offline until the move finishes; its public IP will change.</div></div>{% endif %}
+{% if machine.state == 'suspended' %}<div class="alert alert-error" role="alert">{{ icon('alert', 16) }}<div>{% if machine.suspend_reason == 'bandwidth' %}This machine reached its monthly bandwidth allowance and was suspended. It is restored automatically next month, or contact support.{% else %}This machine is suspended by an administrator. Contact support for help.{% endif %}</div></div>{% endif %}
+<nav class="tabs" aria-label="Machine sections">
+  {% for item in ['overview','metrics','console','network','media','settings'] %}
+  <a href="/machines/{{ machine.id }}?tab={{ item }}" class="tab {% if tab == item %}active{% endif %}" {% if tab == item %}aria-current="page"{% endif %}>{{ item|title }}</a>
+  {% endfor %}
+</nav>
+<div id="action-result" aria-live="polite"></div>
+
+{% if tab == 'overview' %}
+<div class="detail-layout">
+  <div class="stack">
+    <section class="box">
+      <h2 class="box-title">Overview</h2>
+      <dl class="fields">
+        <div><dt>Power state</dt><dd>{{ status_badge(machine.state) }}</dd></div>
+        <div><dt>Uptime</dt><dd>{{ machine.uptime()|uptime }}</dd></div>
+        <div><dt>Public IPv4</dt><dd class="mono">{{ machine.cluster_ip.public_ipv4 if machine.cluster_ip else '—' }}</dd></div>
+        <div><dt>Operating image</dt><dd>{{ machine.image.name if machine.image else '—' }}</dd></div>
+        {% if user.role == 'admin' %}<div><dt>Cluster</dt><dd>{{ machine.cluster.name }}</dd></div><div><dt>Hypervisor name</dt><dd class="mono">{{ machine.vm_name }}</dd></div>{% endif %}
+      </dl>
+    </section>
+    <section class="box os-box">
+      {{ os_logo(machine.image, 44) }}
+      <div><strong>{{ machine.image.name if machine.image else 'Unknown image' }}</strong><span class="muted">{{ os_families[machine.image.os_family] if machine.image else '' }} · {{ machine.vcpu }} vCPU · {{ (machine.memory_mb / 1024)|round(1) }} GB</span></div>
+    </section>
+    <section class="box">
+      <h2 class="box-title">{{ icon('location', 15) }} Location</h2>
+      {{ location_block(machine.cluster) }}
+    </section>
+  </div>
+  <div class="stack">
+    <section class="box">
+      <h2 class="box-title">Power</h2>
+      <div class="power-row">
+        {{ power('start', 'Boot', 'start', busy) }}
+        {{ power('stop', 'Shutdown', 'power', busy, confirm='Shut this machine down gracefully?') }}
+        {{ power('restart', 'Restart', 'restart', busy) }}
+        {{ power('force-stop', 'Power off', 'stop', busy, 'btn-danger', 'Power off immediately? Unsaved data in the machine may be lost.') }}
+      </div>
+      {% if busy %}<p class="muted small">Power actions are unavailable while the machine is {{ machine.state }}.</p>{% endif %}
+    </section>
+    <div class="grid grid-3">
+      <section class="box"><h2 class="box-title">{{ icon('cpu', 15) }} CPU</h2><div class="big-number">{{ machine.vcpu }}<span>cores</span></div></section>
+      <section class="box"><h2 class="box-title">{{ icon('memory', 15) }} Memory</h2><div class="big-number">{{ (machine.memory_mb / 1024)|round(1) }}<span>GB</span></div></section>
+      <section class="box"><h2 class="box-title">{{ icon('disk', 15) }} Disk</h2><div class="big-number">{{ machine.disk_gb }}<span>GB</span></div></section>
+    </div>
+    <section class="box">
+      <div class="box-head"><h2 class="box-title">{{ icon('network', 15) }} Network</h2><span class="mono">{{ machine.cluster_ip.public_ipv4 if machine.cluster_ip else '—' }}</span></div>
+      {{ traffic_summary(machine) }}
+    </section>
+  </div>
+</div>
+
+{% elif tab == 'metrics' %}
+<section class="box">
+  <h2 class="box-title">Live usage</h2>
+  <p class="muted small">Refreshed every 10 seconds while the machine is running.</p>
+  <div id="live-metrics" hx-get="/machines/{{ machine.id }}/metrics/live" hx-trigger="load, every 10s" hx-swap="innerHTML">{% set samples = metrics %}{% include 'metrics_fragment.html' %}</div>
+</section>
+<section class="box">
+  <div class="box-head"><h2 class="box-title">{{ icon('gauge', 15) }} Bandwidth</h2><span class="muted small">{{ machine.traffic_used_bytes()|bytes }} of {{ (machine.bandwidth_limit_gb ~ ' GB') if machine.bandwidth_limit_gb else 'unlimited' }} this month</span></div>
+  {{ traffic_chart(traffic) }}
+</section>
+
+{% elif tab == 'console' %}
+<section class="box">
+  <h2 class="box-title">Console</h2>
+  <p class="muted small">Secure terminal session as <span class="mono">ubuntu</span>.</p>
+  <div id="console-screen" class="console" data-socket="/ws/machines/{{ machine.id }}/console">
+    <div class="console-placeholder">{{ icon('terminal', 24) }}<p>{% if machine.state == 'running' %}Open a terminal to this machine.{% else %}Start the machine to use the console.{% endif %}</p>{% if machine.state == 'running' %}<button type="button" class="btn btn-primary" data-console-open>Open console</button>{% endif %}</div>
+  </div>
+</section>
+
+{% elif tab == 'network' %}
+<div class="grid grid-2">
+  <section class="box">
+    <h2 class="box-title">Addressing</h2>
+    <dl class="fields">
+      <div><dt>Public IPv4</dt><dd class="mono">{{ machine.cluster_ip.public_ipv4 if machine.cluster_ip else '—' }}</dd></div>
+      {% if user.role == 'admin' %}
+      <div><dt>Node private IPv4</dt><dd class="mono">{{ machine.cluster_ip.private_ipv4 if machine.cluster_ip else '—' }}</dd></div>
+      <div><dt>Guest IPv4</dt><dd class="mono">{{ machine.cluster_ip.guest_ipv4 if machine.cluster_ip else '—' }}</dd></div>
+      {% endif %}
+    </dl>
+  </section>
+  <section class="box">
+    <h2 class="box-title">Firewall</h2>
+    <p class="muted small">With no rules every inbound port is open. Adding a rule blocks everything except the allowed ports; ping is always allowed.</p>
+    {% if machine.firewall_rules %}
+    <div class="table-wrap"><table><thead><tr><th>Protocol</th><th>Port</th><th class="right"></th></tr></thead><tbody>
+      {% for rule in machine.firewall_rules %}<tr><td class="mono">{{ rule.protocol|upper }}</td><td class="mono">{{ rule.port }}</td><td class="right"><form method="post" action="/machines/{{ machine.id }}/firewall/{{ rule.id }}/delete" hx-post="/machines/{{ machine.id }}/firewall/{{ rule.id }}/delete" hx-target="#action-result">{{ csrf_field(csrf_token) }}<button class="btn btn-ghost btn-sm btn-text-danger" type="submit">Remove</button></form></td></tr>{% endfor %}
+    </tbody></table></div>
+    {% endif %}
+    <form method="post" action="/machines/{{ machine.id }}/firewall" hx-post="/machines/{{ machine.id }}/firewall" hx-target="#action-result" class="form-inline">
+      {{ csrf_field(csrf_token) }}
+      <label>Protocol<select name="protocol"><option value="tcp">TCP</option><option value="udp">UDP</option></select></label>
+      <label>Port<input type="number" name="port" min="1" max="65535" placeholder="22" required></label>
+      <button class="btn btn-primary" type="submit">Allow port</button>
+    </form>
+  </section>
+</div>
+
+{% elif tab == 'media' %}
+<section class="box">
+  <h2 class="box-title">Media</h2>
+  <dl class="fields">
+    <div><dt>Mounted disc</dt><dd>{{ machine.iso.name if machine.iso else 'None' }}</dd></div>
+    <div><dt>Boot from</dt><dd>{{ 'Disc' if machine.boot_device == 'cdrom' else 'Disk' }}</dd></div>
+  </dl>
+  <form method="post" action="/machines/{{ machine.id }}/media" hx-post="/machines/{{ machine.id }}/media" hx-target="#action-result" class="form-inline">
+    {{ csrf_field(csrf_token) }}
+    <label>ISO<select name="iso_image_id"><option value="0">Eject / none</option>{% for image in images if image.kind == 'iso' %}<option value="{{ image.id }}" {% if machine.iso_image_id == image.id %}selected{% endif %}>{{ image.name }}</option>{% endfor %}</select></label>
+    <label>Boot order<select name="boot_device"><option value="disk" {% if machine.boot_device != 'cdrom' %}selected{% endif %}>Disk first</option><option value="cdrom" {% if machine.boot_device == 'cdrom' %}selected{% endif %}>Disc first</option></select></label>
+    <button class="btn btn-primary" type="submit">Apply</button>
+  </form>
+  <p class="muted small">Boot order changes apply on the next full power cycle.</p>
+</section>
+
+{% else %}
+<div class="grid grid-2">
+  <section class="box">
+    <h2 class="box-title">Machine password</h2>
+    <p class="muted small">Sets the <span class="mono">ubuntu</span> password. The machine must be running.</p>
+    <form method="post" action="/machines/{{ machine.id }}/password" hx-post="/machines/{{ machine.id }}/password" hx-target="#action-result" class="form-stack">
+      {{ csrf_field(csrf_token) }}
+      <label>New password<input type="password" name="password" minlength="12" maxlength="128" autocomplete="new-password" required></label>
+      <div class="form-actions"><button class="btn btn-primary" type="submit">Update password</button></div>
+    </form>
+  </section>
+  <section class="box box-danger">
+    <h2 class="box-title">Rebuild</h2>
+    <p class="muted small">Erases the disk and reinstalls from the chosen image. The public IP stays the same.</p>
+    <form method="post" action="/machines/{{ machine.id }}/rebuild" hx-post="/machines/{{ machine.id }}/rebuild" hx-target="#action-result" data-confirm="Rebuild erases all data on this machine. Continue?" class="form-stack">
+      {{ csrf_field(csrf_token) }}
+      <label>Image<select name="image_id" required>{% for image in images if image.kind == 'cloud' %}<option value="{{ image.id }}" {% if machine.image_id == image.id %}selected{% endif %}>{{ image.name }}</option>{% endfor %}</select></label>
+      <label>New password<input type="password" name="password" minlength="12" maxlength="128" autocomplete="new-password" required></label>
+      <label><span class="confirm-label">Type <span class="mono">{{ machine.vm_name }}</span> to confirm</span><input name="confirm_name" pattern="{{ machine.vm_name }}" autocomplete="off" required></label>
+      <div class="form-actions"><button class="btn btn-danger" type="submit">Rebuild machine</button></div>
+    </form>
+  </section>
+  {% if user.role == 'admin' %}
+  <section class="box">
+    <h2 class="box-title">Console host key</h2>
+    <p class="muted small">The console trusts the SSH host key recorded when this machine was built. If the key was regenerated inside the machine, the console stops connecting. Re-pin to trust the key the machine presents now, or rebuild.</p>
+    <form method="post" action="/administrator/machines/{{ machine.id }}/repin" data-confirm="Trust the host key this machine presents right now?">
+      {{ csrf_field(csrf_token) }}
+      <button class="btn btn-ghost" type="submit"{% if machine.state != 'running' %} disabled{% endif %}>{{ icon('key', 14) }}Re-pin host key</button>
+    </form>
+  </section>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

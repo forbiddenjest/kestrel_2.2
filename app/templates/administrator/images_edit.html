@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% from 'components.html' import csrf_field, form_header, alerts, os_logo %}
+{% block title %}Edit {{ image.name }}{% endblock %}
+{% block content %}
+{{ form_header('Edit image', 'The download URL and checksum cannot change; add a new image instead.', '/administrator/images', 'Images') }}
+{{ alerts(error=error) }}
+<section class="box form-box">
+  <form action="/administrator/images/{{ image.id }}/edit" method="post" class="form-grid">
+    {{ csrf_field(csrf_token) }}
+    <label>Name<input name="name" value="{{ image.name }}" maxlength="100" required></label>
+    {% set SEL = image.os_family %}<label>Operating system<select name="os_family">{% for key, label in os_families.items() %}<option value="{{ key }}" {% if SEL == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    <label class="check span-2"><input type="checkbox" name="active" {% if image.active %}checked{% endif %}><span>Available for new machines and rebuilds</span></label>
+    <div class="os-picker span-2">{{ os_logo(image, 40) }}<span class="muted small">{{ image.kind|upper }} · {{ image.checksum[:16] }}…</span></div>
+    <div class="form-actions span-2"><a class="btn btn-ghost" href="/administrator/images">Cancel</a><button class="btn btn-primary" type="submit">Save changes</button></div>
+  </form>
+</section>
+{% endblock %}

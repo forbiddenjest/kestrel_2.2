@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% from 'components.html' import csrf_field, form_header, alerts %}
+{% block title %}Add IPs{% endblock %}
+{% block content %}
+{{ form_header('Add IPs', 'Extend a cluster\'s pool with private,public IP pairs.', '/administrator/network', 'Network') }}
+{{ alerts(error=error) }}
+<section class="box form-box">
+  <form method="post" action="/administrator/network/ips" class="form-grid">
+    {{ csrf_field(csrf_token) }}
+    <label class="span-2">Cluster<select name="cluster_id" required><option value="">Select a cluster</option>{% for cluster in clusters %}<option value="{{ cluster.id }}" {% if values.cluster_id == cluster.id|string %}selected{% endif %}>{{ cluster.name }} · {{ cluster.node_ipv4 }}</option>{% endfor %}</select></label>
+    <label class="span-2">Private,public pairs<textarea name="pairs" rows="5" placeholder="203.0.113.12,198.51.100.12" spellcheck="false" required>{{ values.pairs or '' }}</textarea><small>One pair per line. The node's own primary IP is not allowed.</small></label>
+    <div class="form-actions span-2"><a class="btn btn-ghost" href="/administrator/network">Cancel</a><button class="btn btn-primary" type="submit">Add IPs</button></div>
+  </form>
+</section>
+{% endblock %}

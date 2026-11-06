@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% from 'components.html' import csrf_field, form_header, alerts %}
+{% block title %}Add account{% endblock %}
+{% block content %}
+{{ form_header('Add account', 'A temporary password is generated and shown once. It must be changed at first sign-in.', '/administrator/accounts', 'Accounts') }}
+{{ alerts(error=error) }}
+<section class="box form-box">
+  <form action="/administrator/accounts" method="post" class="form-grid">
+    {{ csrf_field(csrf_token) }}
+    <label>Email address<input name="email" type="email" value="{{ values.email or '' }}" placeholder="name@company.com" maxlength="255" autocomplete="off" required></label>
+    <label>Username<input name="username" value="{{ values.username or '' }}" placeholder="optional, e.g. jdoe" maxlength="32" pattern="[a-z0-9][a-z0-9_.\-]{2,31}" autocomplete="off"><small>Can be used instead of the email to sign in.</small></label>
+    <fieldset class="span-2 choice">
+      <legend>Role</legend>
+      <label class="choice-item"><input type="radio" name="role" value="user" {% if values.role != 'admin' %}checked{% endif %}><span><strong>User</strong><small>Can sign in and use their own machines from the dashboard.</small></span></label>
+      <label class="choice-item"><input type="radio" name="role" value="admin" {% if values.role == 'admin' %}checked{% endif %}><span><strong>Administrator</strong><small>Full access to machines, clusters, network, images, accounts and activity logs.</small></span></label>
+    </fieldset>
+{% set L = values %}
+    <fieldset class="span-2 limits">
+      <legend>Limits <small class="muted">0 = unlimited</small></legend>
+      <div class="form-grid form-grid-5">
+        <label>Machines<input type="number" name="max_vms" value="{{ L.max_vms or 0 }}" min="0" max="10000"></label>
+        <label>vCPU<input type="number" name="max_vcpu" value="{{ L.max_vcpu or 0 }}" min="0" max="100000"></label>
+        <label>Memory (MB)<input type="number" name="max_memory_mb" value="{{ L.max_memory_mb or 0 }}" min="0" step="512"></label>
+        <label>Disk (GB)<input type="number" name="max_disk_gb" value="{{ L.max_disk_gb or 0 }}" min="0"></label>
+        <label>IPv4 addresses<input type="number" name="max_ips" value="{{ L.max_ips or 0 }}" min="0" max="100000"></label>
+      </div>
+    </fieldset>
+    <div class="form-actions span-2"><a class="btn btn-ghost" href="/administrator/accounts">Cancel</a><button class="btn btn-primary" type="submit">Add account</button></div>
+  </form>
+</section>
+{% endblock %}

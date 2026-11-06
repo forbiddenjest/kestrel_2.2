@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% from 'components.html' import csrf_field, form_header, alerts, status_badge, icon, os_logo, traffic_summary %}
+{% block title %}Edit {{ machine.id }}{% endblock %}
+{% block content %}
+{{ form_header('Manage ' ~ machine.id, machine.vm_name ~ ' on ' ~ machine.cluster.name ~ ' · ' ~ (machine.cluster_ip.public_ipv4 if machine.cluster_ip else 'no IP'), '/administrator/machines', 'Machines') }}
+{{ alerts(error=error, notice=notice) }}
+{% set locked = machine.state in ['provisioning', 'rebuilding', 'deleting', 'transferring'] %}
+<div class="detail-layout-form">
+  <form action="/administrator/machines/{{ machine.id }}/edit" method="post" class="stack">
+    {{ csrf_field(csrf_token) }}
+    <section class="box form-box">
+      <div class="box-head"><h2 class="box-title">Resources</h2>{{ status_badge(machine.state) }}</div>
+      <p class="muted small">vCPU, memory and disk changes need the machine shut down. Disks can only grow. Account limits and node capacity are enforced.</p>
+      <div class="form-grid">
+        <label class="span-2">Owner<select name="owner_id" required>{% for item in users if item.active or item.id == machine.owner_id %}<option value="{{ item.id }}" {% if item.id == machine.owner_id %}selected{% endif %}>{{ item.username or item.email }}{% if item.username %} · {{ item.email }}{% endif %}</option>{% endfor %}</select></label>
+        <label>vCPU<input type="number" name="vcpu" value="{{ machine.vcpu }}" min="1" max="64" required></label>
+        <label>Memory (MB)<input type="number" name="memory_mb" value="{{ machine.memory_mb }}" min="512" max="262144" step="512" required></label>
+        <label>Disk (GB)<input type="number" name="disk_gb" value="{{ machine.disk_gb }}" min="{{ machine.disk_gb }}" max="4096" required></label>
+      </div>
+    </section>
+    <section class="box form-box">
+      <h2 class="box-title">Traffic</h2>
+      <div class="form-grid">
+        <label>Bandwidth limit (GB / month)<input type="number" name="bandwidth_limit_gb" value="{{ machine.bandwidth_limit_gb }}" min="0" max="10000000"><small>0 = unlimited.</small></label>
+        <label>Inbound speed (Mbps)<input type="number" name="speed_in_mbps" list="speeds" value="{{ machine.speed_in_mbps }}" min="0" max="100000"><small>0 = unlimited.</small></label>
+        <label>Outbound speed (Mbps)<input type="number" name="speed_out_mbps" list="speeds" value="{{ machine.speed_out_mbps }}" min="0" max="100000"><small>0 = unlimited.</small></label>
+        <datalist id="speeds"><option value="100"><option value="480"><option value="1000"><option value="2500"><option value="10000"></datalist>
+      </div>
+    </section>
+    <div class="form-actions"><a class="btn btn-ghost" href="/machines/{{ machine.id }}">Open machine</a><button class="btn btn-primary" type="submit"{% if locked %} disabled{% endif %}>Save changes</button></div>
+  </form>
+  <div class="stack">
+    <section class="box os-box">{{ os_logo(machine.image, 40) }}<div><strong>{{ machine.image.name if machine.image else '—' }}</strong><span class="muted">Owner {{ machine.owner.username or machine.owner.email }}</span></div></section>
+    <section class="box">
+      <div class="box-head"><h2 class="box-title">{{ icon('gauge', 15) }} Bandwidth this month</h2></div>
+      {{ traffic_summary(machine) }}
+      <form action="/administrator/machines/{{ machine.id }}/traffic/reset" method="post" data-confirm="Reset this month's bandwidth usage for {{ machine.id }}?{% if machine.suspend_reason == 'bandwidth' %} This also lifts the bandwidth suspension.{% endif %}" class="form-actions">
+        {{ csrf_field(csrf_token) }}<button class="btn btn-ghost" type="submit">{{ icon('restart', 14) }}Refresh bandwidth</button>
+      </form>
+    </section>
+    <section class="box">
+      <h2 class="box-title">{{ icon('pause', 15) }} Suspension</h2>
+      <p class="muted small">{% if machine.state == 'suspended' %}Suspended{% if machine.suspend_reason == 'bandwidth' %} for reaching the bandwidth limit{% elif machine.suspend_reason == 'admin' %} by an administrator{% endif %}. The owner cannot power it on.{% else %}Suspending powers the machine off and stops the owner from starting it.{% endif %}</p>
+      <form action="/administrator/machines/{{ machine.id }}/suspend" method="post" data-confirm="{{ 'Unsuspend' if machine.state == 'suspended' else 'Suspend and power off' }} {{ machine.id }}?">{{ csrf_field(csrf_token) }}<button class="btn {{ 'btn-primary' if machine.state == 'suspended' else 'btn-danger' }}" type="submit"{% if locked %} disabled{% endif %}>{{ 'Unsuspend' if machine.state == 'suspended' else 'Suspend' }}</button></form>
+    </section>
+    <section class="box">
+      <h2 class="box-title">{{ icon('transfer', 15) }} Move to another node</h2>
+      <p class="muted small">Shuts the machine down, copies its disk over encrypted SSH with SHA-256 verification, and boots it on the target with a new public IP. The password and data are kept; the old copy is deleted only after the new one boots.</p>
+      {% set targets = clusters|selectattr('state','equalto','active')|rejectattr('id','equalto',machine.cluster_id)|list %}
+      {% if targets %}
+      <form action="/administrator/machines/{{ machine.id }}/transfer" method="post" class="form-stack" data-confirm="Move {{ machine.id }}? It will be offline during the copy and its public IP will change.">
+        {{ csrf_field(csrf_token) }}
+        <label>Target cluster<select name="target_cluster_id" required>{% for c in targets %}<option value="{{ c.id }}">{{ c.name }}{% if c.location %} · {{ c.location }}{% endif %} ({{ c.ips|selectattr('machine_id','none')|list|length }} free IPs)</option>{% endfor %}</select></label>
+        <label><span class="confirm-label">Type <span class="mono">{{ machine.vm_name }}</span> to confirm</span><input name="confirm_name" pattern="{{ machine.vm_name }}" autocomplete="off" required></label>
+        <div class="form-actions"><button class="btn btn-primary" type="submit"{% if machine.state not in ['running','stopped'] %} disabled{% endif %}>{{ icon('transfer', 14) }}Move machine</button></div>
+      </form>
+      {% else %}<p class="muted small">No other active cluster is available.</p>{% endif %}
+    </section>
+    <section class="box box-danger">
+      <h2 class="box-title">Delete machine</h2>
+      <p class="muted small">Destroys the machine and its disk on {{ machine.cluster.name }} and returns its public IP to the pool. This cannot be undone.</p>
+      <form action="/administrator/machines/{{ machine.id }}/delete" method="post" class="inline-confirm" data-confirm="Delete {{ machine.id }} permanently? All data is destroyed.">
+        {{ csrf_field(csrf_token) }}
+        <label><span class="confirm-label">Type <span class="mono">{{ machine.vm_name }}</span> to confirm</span><input name="confirm_name" pattern="{{ machine.vm_name }}" autocomplete="off" required></label>
+        <button class="btn btn-danger" type="submit"{% if locked %} disabled{% endif %}>Delete machine</button>
+      </form>
+    </section>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% from 'components.html' import status_badge, empty_state, csrf_field, icon, page_header, alerts %}
+{% block title %}Accounts{% endblock %}
+{% block content %}
+{{ page_header('Accounts', 'Who can sign in, and what they can do.', '/administrator/accounts/new', 'Add account') }}
+{{ alerts(flash=flash, secret=secret, notice=notice, error=error) }}
+<section class="box box-flush">
+  <div class="box-head"><h2 class="box-title">All accounts <span class="count">{{ users|length }}</span></h2></div>
+  {% if users %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Account</th><th>Role</th><th>Status</th><th>Machines</th><th>Limits</th><th>Created</th><th class="right">Actions</th></tr></thead>
+    <tbody>
+    {% for item in users %}
+    <tr>
+      <td><div class="cell-title"><img class="user-icon user-icon-sm" src="/static/user_icon.png" alt="" width="28" height="28"><span><strong>{{ item.username or item.email }}</strong><small>{% if item.username %}{{ item.email }} · {% endif %}ID {{ item.id }}{% if item.force_password_change %} · must change password{% endif %}</small></span></div></td>
+      <td><span class="tag {% if item.role == 'admin' %}tag-accent{% endif %}">{{ 'Administrator' if item.role == 'admin' else 'User' }}</span></td>
+      <td>{{ status_badge('active' if item.active else 'suspended') }}</td>
+      <td>{{ item.machines|length }}{% if item.max_vms %} / {{ item.max_vms }}{% endif %}</td>
+      <td class="muted small">{% if item.max_vms or item.max_vcpu or item.max_memory_mb or item.max_disk_gb or item.max_ips %}{{ item.max_vcpu or '∞' }} vCPU · {{ ((item.max_memory_mb / 1024)|round(1)) if item.max_memory_mb else '∞' }} GB RAM · {{ item.max_disk_gb or '∞' }} GB disk · {{ item.max_ips or '∞' }} IPs{% else %}Unlimited{% endif %}</td>
+      <td class="muted">{{ item.created_at.strftime('%b %d, %Y') }}</td>
+      <td class="right">{% if item.id != user.id %}<div class="row-actions">
+        <a class="btn btn-ghost btn-sm" href="/administrator/accounts/{{ item.id }}/edit">{{ icon('edit', 13) }}Edit</a>
+        <form action="/administrator/accounts/{{ item.id }}/role" method="post" data-confirm="{{ 'Remove administrator access from' if item.role == 'admin' else 'Give administrator access to' }} {{ item.email }}?">{{ csrf_field(csrf_token) }}<input type="hidden" name="role" value="{{ 'user' if item.role == 'admin' else 'admin' }}"><button class="btn btn-ghost btn-sm" type="submit">{{ 'Make user' if item.role == 'admin' else 'Make admin' }}</button></form>
+        <form action="/administrator/accounts/{{ item.id }}/toggle" method="post" data-confirm="{{ 'Suspend' if item.active else 'Reactivate' }} {{ item.email }}?">{{ csrf_field(csrf_token) }}<button class="btn btn-ghost btn-sm {% if item.active %}btn-text-danger{% endif %}" type="submit">{{ 'Suspend' if item.active else 'Reactivate' }}</button></form>
+      </div>{% else %}<div class="row-actions"><a class="btn btn-ghost btn-sm" href="/administrator/accounts/{{ item.id }}/edit">{{ icon('edit', 13) }}Edit</a><span class="muted">You</span></div>{% endif %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  {{ empty_state('No accounts', 'Add an account so someone can sign in.', 'accounts', '/administrator/accounts/new', 'Add account') }}
+  {% endif %}
+</section>
+{% endblock %}

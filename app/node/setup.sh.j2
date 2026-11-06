@@ -1,0 +1,167 @@
+#!/usr/bin/env bash
+# Kestrel node setup. Idempotent: safe to run again on the same node.
+set -euo pipefail
+umask 022
+[ "$(id -u)" -eq 0 ] || { echo "Run as root" >&2; exit 1; }
+
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -q
+apt-get install -y -q --no-install-recommends qemu-kvm libvirt-daemon-system libvirt-clients qemu-utils \
+  cloud-image-utils qemu-guest-agent nftables openssh-server curl ca-certificates iproute2 netplan.io
+systemctl enable --now libvirtd
+
+# --- unprivileged panel account (no sudo); libvirt group grants qemu:///system ---
+id -u panel >/dev/null 2>&1 || useradd --create-home --shell /bin/bash panel
+usermod -aG libvirt,kvm panel
+rm -f /etc/sudoers.d/kestrel-panel
+install -d -o panel -g panel -m 0700 /home/panel/.ssh
+printf '%s\n' {{ ("no-agent-forwarding,no-X11-forwarding " ~ panel_key)|q }} > /home/panel/.ssh/authorized_keys
+chown panel:panel /home/panel/.ssh/authorized_keys
+chmod 0600 /home/panel/.ssh/authorized_keys
+
+install -d -o root -g root -m 0755 /etc/kestrel
+# libvirt-qemu (which runs the guests) is in neither group, so the directories on the
+# path to disk files must be world-traversable (o+x, not o+r). libvirt's dynamic
+# ownership relabels the image/overlay files themselves. staged/ stays private.
+install -d -o panel -g libvirt -m 0751 /var/lib/kestrel
+install -d -o panel -g libvirt -m 0751 /var/lib/kestrel/images /var/lib/kestrel/isos /var/lib/kestrel/machines
+install -d -o panel -g libvirt -m 0750 /var/lib/kestrel/staged
+chmod 0751 /var/lib/kestrel /var/lib/kestrel/images /var/lib/kestrel/isos /var/lib/kestrel/machines
+find /var/lib/kestrel/machines -mindepth 1 -maxdepth 1 -type d -exec chmod 0751 {} +
+printf 'UPLINK=%s\nBRIDGE=%s\nNODE_PREFIX=%s\n' {{ uplink|q }} {{ bridge|q }} {{ node_prefix }} > /etc/kestrel/node.env
+
+# --- forwarding; guests get no IPv6 and cannot spoof source addresses ---
+cat > /etc/sysctl.d/90-kestrel-forwarding.conf <<SYSCTL
+net.ipv4.ip_forward=1
+net.ipv4.conf.all.rp_filter=2
+net.ipv4.conf.default.rp_filter=2
+net.ipv4.conf.all.accept_redirects=0
+net.ipv4.conf.all.send_redirects=0
+net.ipv4.conf.all.accept_source_route=0
+net.ipv6.conf.default.accept_ra=0
+SYSCTL
+sysctl -q -p /etc/sysctl.d/90-kestrel-forwarding.conf
+# The guest bridge exists once the kestrel network starts (below); this udev-free hook
+# disables IPv6 on it every time libvirt brings it up.
+install -d -m 0755 /etc/libvirt/hooks
+cat > /etc/libvirt/hooks/network <<'HOOK'
+#!/bin/sh
+# libvirt network hook: $1 = network name, $2 = operation
+if [ "$1" = "kestrel" ] && [ "$2" = "started" ]; then
+  sysctl -q -w net.ipv6.conf.{{ bridge }}.disable_ipv6=1 net.ipv6.conf.{{ bridge }}.accept_ra=0 >/dev/null 2>&1 || true
+fi
+exit 0
+HOOK
+chmod 0755 /etc/libvirt/hooks/network
+# libvirtd only discovers new hook scripts on start; running guests are not affected.
+systemctl try-restart libvirtd
+
+# --- guest bridge: libvirt "open" forwarding so only Kestrel's nftables rules apply ---
+if virsh -q net-info default >/dev/null 2>&1; then
+  virsh -q net-destroy default >/dev/null 2>&1 || true
+  virsh -q net-autostart default --disable >/dev/null 2>&1 || true
+fi
+cat > /etc/kestrel/network.xml <<'NET'
+<network>
+  <name>kestrel</name>
+  <forward mode='open'/>
+  <bridge name='{{ bridge }}' stp='on' delay='0'/>
+  <ip address='{{ gateway }}' netmask='{{ guest_netmask }}'/>
+</network>
+NET
+if ! virsh -q net-info kestrel >/dev/null 2>&1; then virsh -q net-define /etc/kestrel/network.xml; fi
+virsh -q net-autostart kestrel
+virsh -q net-info kestrel | grep -q '^Active:.*yes' || virsh -q net-start kestrel
+sysctl -q -w net.ipv6.conf.{{ bridge }}.disable_ipv6=1 net.ipv6.conf.{{ bridge }}.accept_ra=0 >/dev/null 2>&1 || true
+
+# --- node helper: apply (root, via systemd) and health (panel, unprivileged) ---
+cat > /usr/local/sbin/kestrel-node <<'SCRIPT'
+#!/usr/bin/env bash
+set -euo pipefail
+. /etc/kestrel/node.env
+IPV4='^((25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])$'
+STAGED=/var/lib/kestrel/staged
+case "${1:-}" in
+  apply)
+    [ "$(id -u)" -eq 0 ] || exit 77
+    if [ -s "$STAGED/private_ips" ]; then
+      while IFS= read -r ip; do [ -z "$ip" ] || [[ "$ip" =~ $IPV4 ]] || { echo "bad ip $ip" >&2; exit 65; }; done < "$STAGED/private_ips"
+      install -m 0644 "$STAGED/private_ips" /etc/kestrel/private_ips
+    fi
+    if [ -s "$STAGED/rules.nft" ]; then
+      nft -c -f "$STAGED/rules.nft"
+      install -m 0644 "$STAGED/rules.nft" /etc/kestrel/rules.nft
+    fi
+    touch /etc/kestrel/private_ips
+    tmp=$(mktemp)
+    { printf 'network:\n  version: 2\n  ethernets:\n    %s:\n      addresses:\n' "$UPLINK"
+      while IFS= read -r ip; do [ -n "$ip" ] && printf '        - %s/%s\n' "$ip" "$NODE_PREFIX"; done < /etc/kestrel/private_ips
+    } > "$tmp"
+    if grep -q -- '- ' "$tmp"; then
+      if ! cmp -s "$tmp" /etc/netplan/60-kestrel.yaml; then install -m 0600 "$tmp" /etc/netplan/60-kestrel.yaml; netplan apply; fi
+    else rm -f /etc/netplan/60-kestrel.yaml; fi
+    rm -f "$tmp"
+    test -r /etc/kestrel/rules.nft
+    nft -f /etc/kestrel/rules.nft
+    sha256sum /etc/kestrel/rules.nft | cut -d' ' -f1 > /var/lib/kestrel/applied.sha256
+    chmod 0644 /var/lib/kestrel/applied.sha256
+    ;;
+  health)
+    libvirt=false; forwarding=false; ips=false; rules=false; network=false
+    virsh -c qemu:///system -q list --all >/dev/null 2>&1 && libvirt=true
+    [ "$(cat /proc/sys/net/ipv4/ip_forward)" = "1" ] && forwarding=true
+    if [ -r /etc/kestrel/private_ips ]; then
+      present=$(ip -4 -o addr show dev "$UPLINK" | awk '{print $4}' | cut -d/ -f1)
+      ips=true
+      while IFS= read -r ip; do [ -z "$ip" ] || grep -qxF "$ip" <<<"$present" || ips=false; done < /etc/kestrel/private_ips
+    fi
+    if [ -r /etc/kestrel/rules.nft ] && [ -r /var/lib/kestrel/applied.sha256 ]; then
+      [ "$(sha256sum /etc/kestrel/rules.nft | cut -d' ' -f1)" = "$(cat /var/lib/kestrel/applied.sha256)" ] && rules=true
+    fi
+    virsh -c qemu:///system -q net-info kestrel 2>/dev/null | grep -q '^Active:.*yes' && network=true
+    printf '{"libvirt":%s,"forwarding":%s,"ips":%s,"rules":%s,"network":%s}\n' "$libvirt" "$forwarding" "$ips" "$rules" "$network"
+    ;;
+  *) exit 64 ;;
+esac
+SCRIPT
+chmod 0755 /usr/local/sbin/kestrel-node
+
+# --- initial private IPs and rules (staged, then applied by the same root path as later pushes) ---
+cat > /var/lib/kestrel/staged/private_ips <<'IPS'
+{% for ip in private_ips %}{{ ip }}
+{% endfor %}IPS
+cat > /var/lib/kestrel/staged/rules.nft <<'RULES'
+{{ rules }}RULES
+chown panel:libvirt /var/lib/kestrel/staged/private_ips /var/lib/kestrel/staged/rules.nft
+chmod 0640 /var/lib/kestrel/staged/private_ips /var/lib/kestrel/staged/rules.nft
+
+# --- systemd: reapply at boot after libvirtd, and whenever the panel stages new rules ---
+cat > /etc/systemd/system/kestrel-node.service <<'UNIT'
+{{ node_service }}UNIT
+cat > /etc/systemd/system/kestrel-rules.path <<'UNIT'
+[Unit]
+Description=Apply Kestrel rules staged by the panel
+[Path]
+PathChanged=/var/lib/kestrel/staged/rules.nft
+Unit=kestrel-node.service
+[Install]
+WantedBy=multi-user.target
+UNIT
+systemctl daemon-reload
+systemctl enable kestrel-node.service kestrel-rules.path
+systemctl restart kestrel-node.service
+systemctl restart kestrel-rules.path
+
+# --- base images and ISOs (checksum-verified) ---
+fetch() { # id kind url sha
+  local dest
+  if [ "$2" = cloud ]; then dest="/var/lib/kestrel/images/$1.img"; else dest="/var/lib/kestrel/isos/$1.iso"; fi
+  if [ -f "$dest" ] && echo "$4  $dest" | sha256sum -c --status; then return 0; fi
+  curl -fsSL --proto '=https' --retry 3 -o "$dest.part" "$3"
+  echo "$4  $dest.part" | sha256sum -c --status || { rm -f "$dest.part"; echo "checksum mismatch for image $1" >&2; return 1; }
+  mv -f "$dest.part" "$dest"; chown panel:libvirt "$dest"; chmod 0640 "$dest"
+}
+{% for image in images %}fetch {{ image.id }} {{ image.kind|q }} {{ image.url|q }} {{ image.sha|q }}
+{% endfor %}
+echo "Kestrel node ready:"
+sudo -u panel /usr/local/sbin/kestrel-node health

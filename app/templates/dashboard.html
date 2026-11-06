@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% from 'components.html' import status_badge, empty_state, icon, page_header, os_logo, flag %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Dashboard</h1><p>{% if scope == 'all' %}Every virtual machine on the system.{% else %}Virtual machines assigned to you.{% endif %}</p></div>
+  {% if user.role == 'admin' %}
+  <div class="segmented" role="group" aria-label="Machine scope">
+    <a class="{% if scope != 'all' %}active{% endif %}" href="/dashboard" {% if scope != 'all' %}aria-current="page"{% endif %}>Showing your VMs</a>
+    <a class="{% if scope == 'all' %}active{% endif %}" href="/dashboard?scope=all" {% if scope == 'all' %}aria-current="page"{% endif %}>Showing all VMs on system</a>
+  </div>
+  {% endif %}
+</div>
+<div class="grid grid-4">
+  <div class="box stat"><div class="stat-body"><span class="stat-label">Machines</span><strong class="stat-value">{{ machines|length }}</strong></div><span class="stat-icon">{{ icon('machines', 18) }}</span></div>
+  <div class="box stat"><div class="stat-body"><span class="stat-label">Running</span><strong class="stat-value">{{ machines|selectattr('state','equalto','running')|list|length }}</strong></div><span class="stat-icon">{{ icon('start', 18) }}</span></div>
+  <div class="box stat"><div class="stat-body"><span class="stat-label">vCPU</span><strong class="stat-value">{{ machines|sum(attribute='vcpu') }}</strong></div><span class="stat-icon">{{ icon('cpu', 18) }}</span></div>
+  <div class="box stat"><div class="stat-body"><span class="stat-label">Memory</span><strong class="stat-value">{{ ((machines|sum(attribute='memory_mb')) / 1024)|round(1) }} <small>GB</small></strong></div><span class="stat-icon">{{ icon('memory', 18) }}</span></div>
+</div>
+<section class="box box-flush">
+  <div class="box-head"><h2 class="box-title">Machines <span class="count">{{ machines|length }}</span></h2></div>
+  {% if machines %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Machine</th><th>State</th><th>Public IPv4</th><th>Location</th><th>Resources</th><th>Bandwidth</th>{% if scope == 'all' %}<th>Owner</th>{% endif %}<th class="right"></th></tr></thead>
+    <tbody>
+    {% for machine in machines %}
+    <tr>
+      <td><a class="cell-title" href="/machines/{{ machine.id }}"><span class="cell-logo">{{ os_logo(machine.image, 30) }}</span><span><strong>{{ machine.id }}</strong><small>{{ machine.image.name if machine.image else 'No image' }}</small></span></a></td>
+      <td>{{ status_badge(machine.state) }}</td>
+      <td class="mono">{{ machine.cluster_ip.public_ipv4 if machine.cluster_ip else '—' }}</td>
+      <td><div class="cell-location">{{ flag(machine.cluster.location_id, 'flag flag-sm') }}<span>{{ machine.cluster.location or '—' }}{% if machine.cluster.location_id %}<small class="cell-sub">{{ machine.cluster.location_id }}</small>{% endif %}</span></div></td>
+      <td class="nowrap">{{ machine.vcpu }} vCPU · {{ (machine.memory_mb / 1024)|round(1) }} GB<small class="cell-sub">{{ machine.disk_gb }} GB disk</small></td>
+      <td>{{ machine.traffic_used_bytes()|bytes }}<small class="cell-sub">of {{ (machine.bandwidth_limit_gb ~ ' GB') if machine.bandwidth_limit_gb else 'unlimited' }}</small></td>
+      {% if scope == 'all' %}<td class="cell-owner" title="{{ machine.owner.email }}">{{ machine.owner.username or machine.owner.email }}</td>{% endif %}
+      <td class="right"><a class="btn btn-ghost btn-sm btn-square" href="/machines/{{ machine.id }}" aria-label="Manage {{ machine.id }}" title="Manage">{{ icon('chevron', 14) }}</a></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  {{ empty_state('No machines yet', 'Machines assigned to you will appear here.' if scope != 'all' else 'No machines exist on the system yet.', 'machines') }}
+  {% endif %}
+</section>
+{% endblock %}

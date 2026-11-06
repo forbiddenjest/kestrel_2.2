@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% from 'components.html' import status_badge, empty_state, page_header %}
+{% block title %}Activity logs{% endblock %}
+{% block content %}
+{{ page_header('Activity logs', 'Every change made in the panel and every background job. Latest 100 of each.') }}
+<section class="box box-flush">
+  <div class="box-head"><h2 class="box-title">Events <span class="count">{{ logs|length }}</span></h2></div>
+  {% if logs %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Event</th><th>Actor</th><th>Target</th><th>Source IP</th><th>Result</th><th>Time (UTC)</th></tr></thead>
+    <tbody>{% for log in logs %}<tr><td class="mono">{{ log.action }}</td><td>{{ log.actor_label }}</td><td class="mono">{{ log.target or '—' }}</td><td class="mono">{{ log.remote_ip or '—' }}</td><td>{{ status_badge(log.result) }}</td><td class="muted">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}{{ empty_state('No events yet', 'Changes made in the panel appear here.', 'logs') }}{% endif %}
+</section>
+<section class="box box-flush">
+  <div class="box-head"><h2 class="box-title">Jobs <span class="count">{{ jobs|length }}</span></h2></div>
+  {% if jobs %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Job</th><th>Machine</th><th>State</th><th>Output</th><th>Updated (UTC)</th></tr></thead>
+    <tbody>{% for job in jobs %}<tr><td><strong>{{ job.kind }}</strong><small class="cell-sub">#{{ job.id }}</small></td><td class="mono">{{ job.machine_id or '—' }}</td><td>{{ status_badge(job.state) }}</td><td class="muted">{{ job.result or '—' }}</td><td class="muted">{{ job.updated_at.strftime('%b %d, %H:%M') }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}{{ empty_state('No jobs yet', 'Machine operations run by the worker appear here.', 'activity') }}{% endif %}
+</section>
+{% endblock %}

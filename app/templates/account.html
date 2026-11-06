@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% from 'components.html' import page_header, alerts, status_badge %}
+{% block title %}Account{% endblock %}
+{% block content %}
+{{ page_header('Account', 'Your sign-in details and password.') }}
+{% if request.query_params.get('password_change') %}<div class="alert alert-warning" role="status"><div>Set a new password before continuing.</div></div>{% endif %}
+{{ alerts(error=error, notice=message) }}
+<div class="grid grid-2">
+  <section class="box">
+    <h2 class="box-title">Profile</h2>
+    <dl class="fields">
+      <div><dt>Email</dt><dd>{{ user.email }}</dd></div>
+      <div><dt>Username</dt><dd>{{ user.username or '—' }}</dd></div>
+      <div><dt>Role</dt><dd>{{ 'Administrator' if user.role == 'admin' else 'User' }}</dd></div>
+      <div><dt>Status</dt><dd>{{ status_badge('active' if user.active else 'suspended') }}</dd></div>
+      <div><dt>Member since</dt><dd>{{ user.created_at.strftime('%b %d, %Y') }}</dd></div>
+    </dl>
+  </section>
+  <section class="box">
+    <h2 class="box-title">Change password</h2>
+    <p class="muted">At least 12 characters. You will be signed out everywhere afterwards.</p>
+    <form method="post" action="/account/password" class="form-stack">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>Current password<input type="password" name="current_password" autocomplete="current-password" maxlength="256" required></label>
+      <label>New password<input type="password" name="new_password" minlength="12" maxlength="256" autocomplete="new-password" required></label>
+      <div class="form-actions"><button type="submit" class="btn btn-primary">Update password</button></div>
+    </form>
+  </section>
+</div>
+{% endblock %}

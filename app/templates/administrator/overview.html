@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% from 'components.html' import status_badge, empty_state, stat_card, bar, icon, page_header, alerts, csrf_field %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+{% set running = machines|selectattr('state','equalto','running')|list|length %}
+{% set provisioning = machines|selectattr('state','in',['pending','queued','provisioning'])|list|length %}
+{% set active_clusters = clusters|selectattr('state','equalto','active')|list %}
+{% set failed_machines = machines|selectattr('state','equalto','failed')|list %}
+{% set failed_jobs = jobs|selectattr('state','equalto','failed')|list %}
+{% set degraded = clusters|rejectattr('state','in',['active','draining'])|list %}
+{% set mem_used = ((machines|sum(attribute='memory_mb')) / 1024)|round(1) %}
+{% set mem_total = ((clusters|sum(attribute='memory_capacity_mb')) / 1024)|round(1) %}
+{% set free_ips = ips|selectattr('machine_id','none')|list|length %}
+{{ page_header('Overview', 'System health, capacity and recent activity.') }}
+{{ alerts(notice=notice, error=error) }}
+<div class="grid grid-4">
+  {{ stat_card('Machines', machines|length, running ~ ' running · ' ~ provisioning ~ ' provisioning', 'machines') }}
+  {{ stat_card('Clusters', clusters|length, active_clusters|length ~ ' active', 'clusters') }}
+  {{ stat_card('Accounts', users|length, users|selectattr('active')|list|length ~ ' active', 'accounts') }}
+  {{ stat_card('Public IPs', (ips|length - free_ips)|string ~ ' / ' ~ ips|length, free_ips ~ ' free', 'network') }}
+</div>
+<div class="grid grid-2">
+  <section class="box">
+    <h2 class="box-title">Capacity</h2>
+    {{ bar('Memory', mem_used, mem_total, 'GB', 'committed') }}
+    {{ bar('vCPU', machines|sum(attribute='vcpu'), clusters|sum(attribute='cpu_capacity'), 'threads', 'scheduled') }}
+    <dl class="fields fields-inline">
+      <div><dt>Images</dt><dd>{{ images|selectattr('active')|list|length }} active / {{ images|length }}</dd></div>
+      <div><dt>Disk provisioned</dt><dd>{{ machines|sum(attribute='disk_gb') }} GB</dd></div>
+    </dl>
+  </section>
+  <section class="box">
+    <h2 class="box-title">Needs attention</h2>
+    {% if failed_machines or failed_jobs or degraded %}
+    <div class="list">
+      {% for m in failed_machines[:5] %}<a class="list-row" href="/machines/{{ m.id }}">{{ icon('machines', 15) }}<span><strong>{{ m.id }}</strong><small>Machine failed</small></span>{{ status_badge(m.state) }}</a>{% endfor %}
+      {% for c in degraded[:5] %}<a class="list-row" href="/administrator/clusters">{{ icon('clusters', 15) }}<span><strong>{{ c.name }}</strong><small>Node not verified</small></span>{{ status_badge(c.state) }}</a>{% endfor %}
+      {% for j in failed_jobs[:5] %}<a class="list-row" href="/administrator/logs">{{ icon('activity', 15) }}<span><strong>{{ j.kind }} #{{ j.id }}</strong><small>{{ (j.result or 'Job failed')|truncate(60) }}</small></span>{{ status_badge(j.state) }}</a>{% endfor %}
+    </div>
+    {% else %}
+    <div class="all-clear">{{ icon('check', 22) }}<div><strong>All clear</strong><span class="muted">No failed machines, jobs or unverified nodes.</span></div></div>
+    {% endif %}
+  </section>
+</div>
+<section class="box box-flush">
+  <div class="box-head"><h2 class="box-title">Recent activity</h2><a class="btn btn-ghost btn-sm" href="/administrator/logs">View all {{ icon('chevron', 13) }}</a></div>
+  {% if logs %}
+  <div class="table-wrap"><table><thead><tr><th>Event</th><th>Actor</th><th>Target</th><th>Result</th><th>Time (UTC)</th></tr></thead><tbody>
+  {% for log in logs[:8] %}<tr><td class="mono">{{ log.action }}</td><td>{{ log.actor_label }}</td><td class="mono">{{ log.target or '—' }}</td><td>{{ status_badge(log.result) }}</td><td class="muted">{{ log.created_at.strftime('%Y-%m-%d %H:%M') }}</td></tr>{% endfor %}
+  </tbody></table></div>
+  {% else %}{{ empty_state('No activity yet', 'Changes and background jobs are recorded here.', 'logs') }}{% endif %}
+</section>
+{% endblock %}

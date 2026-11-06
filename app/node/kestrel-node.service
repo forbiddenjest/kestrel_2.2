@@ -1,0 +1,13 @@
+[Unit]
+Description=Kestrel node network policy
+After=network-online.target libvirtd.service
+Wants=network-online.target libvirtd.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/kestrel-node apply
+RemainAfterExit=no
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target
